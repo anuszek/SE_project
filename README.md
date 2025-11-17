@@ -3,7 +3,7 @@
 
 ## Project Description
 
-This is the repository for the **SE_AGH_Access_Controll_System** system, which aims to increase the security and reliability of employee entry registration at a facility. The system uses two-factor authentication, combining the scanning of a QR code access pass with real-time biometric verification of the employee's face.
+This is the repository for the **Access Controll System** system, which aims to increase the security and reliability of employee entry registration at a facility. The system uses two-factor authentication, combining the scanning of a QR code access pass with real-time biometric verification of the employee's face.
 
 The system is designed to eliminate abuse (e.g., sharing access cards), ensure reliable work time tracking, and provide automatic reporting on incidents.
 
@@ -18,7 +18,7 @@ The system is designed to eliminate abuse (e.g., sharing access cards), ensure r
 * **Reporting Module:** Generation of reports for correct entries and incidents, with options for filtering and exporting.
 
 * **Incident Notifications:** Automatic alerts for the security department in case a high-risk entry attempt is detected.
----
+
 ## Key System Parameters
 
 * **Hardware Platform:** The system is intended to run on a laptop (CPU/GPU) with an integrated camera.
