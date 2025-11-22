@@ -1,32 +1,57 @@
-# Access Control System (QR + Face Biometrics)
-~~Project made for Software Engineering class~~
+## Instrukcje deweloperskie 
 
-## Project Description
+**Zalecany Python:** Używaj Python 3.11 do pracy deweloperskiej i uruchamiania lokalnego. Plik `server/requirements.txt` zawiera wersje (m.in. `SQLAlchemy==2.0.25`), które mogą być niezgodne z Pythonem 3.14.
 
-This is the repository for the **Access Controll System** system, which aims to increase the security and reliability of employee entry registration at a facility. The system uses two-factor authentication, combining the scanning of a QR code access pass with real-time biometric verification of the employee's face.
+- **Wymagania projektu:** znajdziesz w `server/requirements.txt`.
 
-The system is designed to eliminate abuse (e.g., sharing access cards), ensure reliable work time tracking, and provide automatic reporting on incidents.
+**Utworzenie i użycie wirtualnego środowiska (PowerShell)**:
 
-## Main Features
+```powershell
+# przejdź do katalogu serwera
+cd .\server
 
-* **Two-Factor Authentication:** Access is granted only when the scanned QR code matches the detected employee's face (1:1 match).
+# jeśli masz zainstalowany Python 3.11 jako konkretny egzemplarz:
+& C:/Users/Fisher/AppData/Local/Programs/Python/Python311/python.exe -m venv .venv
 
-* **Abuse Detection:** The system automatically identifies and logs discrepancies (e.g., correct QR, but incorrect face) as incidents.
+# alternatywnie, gdy korzystasz z py launcher:
+py -3.11 -m venv .venv
 
-* **Employee Management:** An admin panel for adding/removing employees, managing their permissions, and adding reference photos.
+# zezwól na uruchamianie skryptów w tej sesji (jeśli potrzeba)
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
 
-* **Reporting Module:** Generation of reports for correct entries and incidents, with options for filtering and exporting.
+# aktywuj środowisko
+.\.venv\Scripts\Activate.ps1
 
-* **Incident Notifications:** Automatic alerts for the security department in case a high-risk entry attempt is detected.
+# zaktualizuj pip i zainstaluj zależności
+python -m pip install --upgrade pip setuptools wheel
+pip install -r requirements.txt
+```
 
-## Key System Parameters
+**Uruchamianie serwera Flask (opcje)**:
 
-* **Hardware Platform:** The system is intended to run on a laptop (CPU/GPU) with an integrated camera.
+- Preferowane (Flask CLI) — uruchom z katalogu `server` z aktywowanym venv:
 
-* **Performance:** Full verification (QR + face) should not exceed **3 seconds**.
+```powershell
+flask run --host=0.0.0.0
 
-* **Accuracy:** The required minimum identification accuracy is **90%**.
+# lub jawnie ustaw fabrykę aplikacji
+$env:FLASK_APP = "main:create_app"
+flask run --host=0.0.0.0
+```
 
-* **Scale:** The system is designed to support up to **20 employees**.
+- Alternatywnie uruchom bezpośrednio:
 
-* **Data Storage:** System logs and incident reports are stored for **6 months**.
+```powershell
+python main.py
+```
+
+**Uwagi i rozwiązywanie problemów**:
+
+- Jeżeli pojawi się błąd "Failed to find Flask application or factory in module 'app'", upewnij się, że uruchamiasz polecenie z katalogu `server` (aby `main.py` był importowalny), albo ustaw `FLASK_APP` na `main:create_app` jak wyżej.
+- Jeśli `pip install -r requirements.txt` zakończy się błędem przy kompilacji natywnych modułów (np. biblioteki face recognition), skomentuj opcjonalne pozycje w `server/requirements.txt` i uruchom instalację ponownie.
+- Aby sprawdzić zainstalowane wersje wewnątrz venv:
+
+```powershell
+python -c "import sqlalchemy, flask_sqlalchemy; print('SQLAlchemy', sqlalchemy.__version__); print('Flask_SQLAlchemy', flask_sqlalchemy.__version__)"
+```
+
