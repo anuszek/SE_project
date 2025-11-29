@@ -12,17 +12,33 @@ employees_bp = Blueprint('employees', __name__)
 def register_emplyee():
 
 @employees_bp.route('/verify', method=['POST'])
-def verify_emplyee(emplyee_face,emplyee_qe):
+def verify_emplyee():
+    if not request.is_json:
+        return jsonify({"error": "Zły format"}), 400
+    data = request.get_json()
+    qr_input=data.get('qr_coode') # zmianic nazwy odpwowiednie
+    image_input= data.get('image')
+
+    if not qr_input or not image_input:
+        return jsonify({'error':'Bad type brakuje image albo qr'}), 400
+    
     # validate qr TO-DO
-    # validacka qr zwraca id pracownika
-    # przeszukiwanie bazy danych
+    
     employee_id =1 #placeholder
-    face_form_db = FaceCredential.query.filter(Employee.query.filter(employee_id))
-    if FaceService.compera_faces(emplyee_face,face_form_db):
-        return {
-            'message': "Sukces"
-        },200
+    # jeli image w zlym typie dto dopiac
+    employee_face_from_db= FaceCredential.query.filter(employee_id=employee_id).first()
+    is_match= FaceService.compare_faces(employee_face_from_db,image_input)
+    
+    if is_match:
+        employee = Employee.query.get(employee_id)
+        return jsonify({
+            "status": "granted",
+            "message": f"Dostęp przyznany. Witaj, {employee.first_name}!",
+            "employee_id": employee.id
+        }), 200
     else:
-        return {
-            'message': "Bad face"
-    },400
+        # KOD QR SIĘ ZGADZA, ALE TWARZ NIE
+        return jsonify({
+            "status": "denied",
+            "message": "Weryfikacja biometryczna nieudana. Twarz nie pasuje do kodu QR."
+        }), 401

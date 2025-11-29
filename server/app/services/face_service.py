@@ -19,14 +19,14 @@ class FaceServices:
         return encoding
     
     @staticmethod
-    def compare_faces(known_encoding_bytes, unknown_encoding_np, tolerance=0.6):
+    def compare_faces(known_face, uploaded_face, tolerance=0.6):
         """
         Porównuje zapisaną twarz z nową.
         tolerance: im mniejsze, tym bardziej rygorystyczne (0.6 to standard).
         """
         # konwersaj an numpy, do fukcji muszą byc w takim type
-        known_encoding = np.frombuffer(known_encoding_bytes, dtype=np.float64)
+        uploaded_face_np = np.frombuffer(uploaded_face, dtype=np.float64)
         
         # Oblicz dystans (wynik to lista bool, więc bierzemy [0])
-        results = face_recognition.compare_faces([known_encoding], unknown_encoding_np, tolerance=tolerance)
+        results = face_recognition.compare_faces([uploaded_face_np], known_face,, tolerance=tolerance)
         return results[0]
