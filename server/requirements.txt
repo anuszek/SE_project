@@ -3,17 +3,18 @@ Flask_SQLAlchemy==3.1.1
 SQLAlchemy==2.0.25
 Flask-Migrate==4.0.5
 
-# Authentication / security
-#PyJWT==2.8.0
-#Werkzeug==3.0.1
-#bcrypt==4.1.2
+# Ważne dla Python 3.12+ (naprawia błędy importu w starszych bibliotekach)
+setuptools
 
-# Image processing + face recognition
-face_recognition
-dlib
-opencv-python
+# Przetwarzanie obrazu
 numpy
+opencv-python
 
-# Utilities
-#python-dotenv==1.0.1
-#Pillow==10.2.0
+# Biblioteki C++ (nie przypinamy wersji dla WSL, niech pip sam dobierze)
+dlib
+
+# Modele AI (pobierane bezpośrednio z GitHuba)
+face_recognition_models @ git+https://github.com/ageitgey/face_recognition_models
+
+# Główna biblioteka
+face_recognition

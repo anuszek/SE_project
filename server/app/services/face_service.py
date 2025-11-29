@@ -11,7 +11,7 @@ class FaceServices:
         #locate face   
         face_locations=face_recognition.face_locations(image)
 
-        if len(face_lostions) == 0:
+        if len(face_locations) == 0:
             return None #nie znaleziono twarzy
         
         #wektor cech
@@ -28,5 +28,5 @@ class FaceServices:
         uploaded_face_np = np.frombuffer(uploaded_face, dtype=np.float64)
         
         # Oblicz dystans (wynik to lista bool, więc bierzemy [0])
-        results = face_recognition.compare_faces([uploaded_face_np], known_face,, tolerance=tolerance)
+        results = face_recognition.compare_faces([uploaded_face_np], known_face, tolerance=tolerance)
         return results[0]

@@ -3,15 +3,16 @@ from sqlalchemy.exc import IntegrityError
 from app.utils.db import db
 from app.models.employee import Employee
 from app.models.employee_face import FaceCredential
-from app.services.face_service import FaceService
+from app.services.face_service import FaceServices
 
 # Tworzymy "Blueprint" - czyli moduł aplikacji
 employees_bp = Blueprint('employees', __name__)
 
-@employees_bp.route('/register', method=['POST'])
+@employees_bp.route('/register', methods=['POST'])
 def register_emplyee():
+    pass
 
-@employees_bp.route('/verify', method=['POST'])
+@employees_bp.route('/verify', methods=['POST'])
 def verify_emplyee():
     if not request.is_json:
         return jsonify({"error": "Zły format"}), 400
@@ -27,7 +28,7 @@ def verify_emplyee():
     employee_id =1 #placeholder
     # jeli image w zlym typie dto dopiac
     employee_face_from_db= FaceCredential.query.filter(employee_id=employee_id).first()
-    is_match= FaceService.compare_faces(employee_face_from_db,image_input)
+    is_match= FaceServices.compare_faces(employee_face_from_db,image_input)
     
     if is_match:
         employee = Employee.query.get(employee_id)
