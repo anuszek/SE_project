@@ -37,26 +37,27 @@ def create_app():
     # ----------------------------------------
     with app.app_context():
         # 1. IMPORT MODELI
-        # Importujemy tutaj, aby SQLAlchemy "zarejestrowało" klasy modeli
-        # zanim wywołamy create_all().
+        # Ważne: Musimy zaimportować klasy ze wszystkich plików modeli,
+        # żeby SQLAlchemy wiedziało o ich istnieniu przed create_all().
+        
         from app.models.employee import Employee
-        # from app.models.access_log import AccessLog # <-- Odkomentuj, gdy naprawisz ten plik
+        from app.models.employee_face import FaceCredential
+        from app.models.qr_code import QRCredential  # Pamiętaj, klasa nazywa się QRCredential
 
         # 2. TWORZENIE TABEL
-        # Bezwarunkowe wywołanie. SQLAlchemy sprawdzi metadane:
-        # - Jeśli tabel nie ma -> stworzy je.
-        # - Jeśli są -> zostawi je w spokoju.
+        # SQLAlchemy przeskanuje zaimportowane modele i utworzy brakujące tabele
         db.create_all()
 
         # Logowanie dla pewności
+        print("-" * 50)
         print(f"Connected to DB at: {db_path}")
-        # To pokaże, jakie tabele SQLAlchemy widzi i stworzyło
         print("Detected tables:", db.metadata.tables.keys())
+        print("-" * 50)
 
     # ----------------------------------------
     # REGISTER BLUEPRINTS
     # ----------------------------------------
-    # Tu możesz rejestrować blueprinty...
+    # Tu później dodasz rejestrację tras (routes), np.:
     # from app.routes.employees import employees_bp
     # app.register_blueprint(employees_bp, url_prefix="/api/employees")
 
