@@ -1,10 +1,9 @@
 import os
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from app.utils.db import db
 
-# GLOBAL DB object
-db = SQLAlchemy()
+# GLOBAL migrate object
 migrate = Migrate()
 
 def create_app():
@@ -13,79 +12,56 @@ def create_app():
     Sets up the app, database, and blueprints.
     """
 
+    # ------------------------------
+    # Flask app with instance folder
+    # ------------------------------
     app = Flask(__name__, instance_relative_config=True)
 
     # Ensure instance/ folder exists
-    try:
-        os.makedirs(app.instance_path, exist_ok=True)
-    except OSError:
-        pass
+    os.makedirs(app.instance_path, exist_ok=True)
 
-    # Path: server/instance/access_system.db
+    # Absolute path to SQLite DB inside instance/
     db_path = os.path.join(app.instance_path, "access_system.db")
 
-    # SQLite database config
+    # Database config
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SECRET_KEY"] = "your-secret-key"
 
-    # Init DB + migrations
+    # Initialize DB + migrations
     db.init_app(app)
     migrate.init_app(app, db)
 
     # ----------------------------------------
-    # IMPORT MODELS (so SQLAlchemy knows them)
-    # Only import models that exist under `app/models`
+    # KONTEKST APLIKACJI I TWORZENIE BAZY
     # ----------------------------------------
-    try:
+    with app.app_context():
+        # 1. IMPORT MODELI
+        # Importujemy tutaj, aby SQLAlchemy "zarejestrowało" klasy modeli
+        # zanim wywołamy create_all().
         from app.models.employee import Employee
-    except Exception:
-        Employee = None
+        # from app.models.access_log import AccessLog # <-- Odkomentuj, gdy naprawisz ten plik
 
-    try:
-        from app.models.access_log import AccessLog
-    except Exception:
-        AccessLog = None
+        # 2. TWORZENIE TABEL
+        # Bezwarunkowe wywołanie. SQLAlchemy sprawdzi metadane:
+        # - Jeśli tabel nie ma -> stworzy je.
+        # - Jeśli są -> zostawi je w spokoju.
+        db.create_all()
+
+        # Logowanie dla pewności
+        print(f"Connected to DB at: {db_path}")
+        # To pokaże, jakie tabele SQLAlchemy widzi i stworzyło
+        print("Detected tables:", db.metadata.tables.keys())
 
     # ----------------------------------------
     # REGISTER BLUEPRINTS
-    # (add real ones later)
     # ----------------------------------------
-    # Import blueprints from `app/routes` (if present)
-    try:
-        from app.routes.verify import verify_bp
-    except Exception:
-        verify_bp = None
-
-    try:
-        from app.routes.employees import employees_bp
-    except Exception:
-        employees_bp = None
-
-    try:
-        from app.routes.auth import auth_bp
-    except Exception:
-        auth_bp = None
-
-    if verify_bp is not None:
-        app.register_blueprint(verify_bp, url_prefix="/api/verify")
-    if employees_bp is not None:
-        app.register_blueprint(employees_bp, url_prefix="/api/employees")
-    if auth_bp is not None:
-        app.register_blueprint(auth_bp, url_prefix="/api/auth")
-
-    # ----------------------------------------
-    # Create DB if it does not exist
-    # ----------------------------------------
-    with app.app_context():
-        if not os.path.exists(db_path):
-            print("Creating SQLite database...")
-            db.create_all()
+    # Tu możesz rejestrować blueprinty...
+    # from app.routes.employees import employees_bp
+    # app.register_blueprint(employees_bp, url_prefix="/api/employees")
 
     return app
 
-
-# Run directly (useful locally / Lovable dev server)
 if __name__ == "__main__":
     app = create_app()
     app.run(debug=True)
