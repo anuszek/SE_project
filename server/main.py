@@ -58,8 +58,8 @@ def create_app():
     # REGISTER BLUEPRINTS
     # ----------------------------------------
     # Tu później dodasz rejestrację tras (routes), np.:
-    # from app.routes.employees import employees_bp
-    # app.register_blueprint(employees_bp, url_prefix="/api/employees")
+    from app.routes.employees import employees_bp
+    app.register_blueprint(employees_bp, url_prefix="/api/employees")
 
     return app
 
