@@ -8,7 +8,7 @@ def test_register_employee_json_base64(client):
     """
     Testuje rejestrację BEZ QR (tylko zdjęcie i dane).
     """
-    real_image_path = "/home/fisher/SE_project/faces_test/face.jpg"
+    real_image_path = "../faces_test/face.jpg"
     
     # Otwórz prawdziwy plik
     with open(real_image_path, "rb") as img_file:
@@ -48,7 +48,7 @@ def test_verify_employee_success(client):
     """
     Testuje pełny proces: Rejestracja -> Weryfikacja.
     """
-    real_image_path = "/home/fisher/SE_project/faces_test/face.jpg"
+    real_image_path = "../faces_test/face.jpg"
     
     # 1. Przygotowanie zdjęcia (Base64)
     with open(real_image_path, "rb") as img_file:
