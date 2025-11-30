@@ -6,13 +6,16 @@ const QRReader = ({ onScan }) => {
 
   return (
     <div style={{ width: "100%", maxWidth: "400px", margin: "0 auto" }}>
-      <h2>QR Code Scanner</h2>
-
       {/* The Scanner component */}
       <Scanner
         onScan={(result) => {
           if (result && result.length > 0) {
-            setScannedResult(result[0].rawValue);
+            const rawValue = result[0].rawValue;
+            setScannedResult(rawValue);
+            // Call the onScan callback to progress to the next step
+            if (onScan) {
+              onScan(rawValue);
+            }
           }
         }}
         onError={(error) => console.log(error)}

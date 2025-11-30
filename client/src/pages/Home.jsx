@@ -1,6 +1,11 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { LockOutlined } from "@mui/icons-material";
+import {
+  LockOutlined,
+  CheckCircleOutlined,
+  DoDisturbOnOutlined,
+  CheckOutlined,
+} from "@mui/icons-material";
 import QRReader from "../components/QRReader";
 import FaceCapture from "../components/FaceCapture";
 import { verify } from "../api/verify";
@@ -28,17 +33,36 @@ const Home = () => {
   };
 
   const handleVerification = async (qr, face) => {
-    try {
-      const result = await verify(qr, face);
-      setVerificationResult({ success: true, data: result });
-    } catch (error) {
-      setVerificationResult({
-        success: false,
-        error: error.message || "Verification failed",
-      });
-    } finally {
+    // try {
+    //   const result = await verify(qr, face);
+    //   setVerificationResult({ success: true, data: result });
+    // } catch (error) {
+    //   setVerificationResult({
+    //     success: false,
+    //     error: error.message || "Verification failed",
+    //   });
+    // } finally {
+    //   setStep("result");
+    // }
+
+    // Simulated verification for demo purposes
+    setTimeout(() => {
+      if (!qr) {
+        setVerificationResult({
+          success: true,
+          data: {
+            employee: { name: "John Doe", id: "12345" },
+            timestamp: Date.now(),
+          },
+        });
+      } else {
+        setVerificationResult({
+          success: false,
+          error: "Invalid QR code. Access denied.",
+        });
+      }
       setStep("result");
-    }
+    }, 2000);
   };
 
   const reset = () => {
@@ -51,7 +75,6 @@ const Home = () => {
   const getStepNumber = () => {
     const steps = { qr: 1, face: 2, verifying: 3, result: 3 };
     return steps[step] || 1;
-    // return 3;
   };
 
   const renderProgressIndicator = () => {
@@ -65,7 +88,7 @@ const Home = () => {
               currentStep >= 1 ? "active" : ""
             } ${currentStep > 1 ? "completed" : ""}`}
           >
-            {currentStep > 1 ? "✓" : "1"}
+            {currentStep > 1 ? <CheckOutlined></CheckOutlined> : "1"}
           </div>
           <span
             className={`progress-step-label ${
@@ -86,7 +109,7 @@ const Home = () => {
               currentStep >= 2 ? "active" : ""
             } ${currentStep > 2 ? "completed" : ""}`}
           >
-            {currentStep > 2 ? "✓" : "2"}
+            {currentStep > 2 ? <CheckOutlined></CheckOutlined> : "2"}
           </div>
           <span
             className={`progress-step-label ${
@@ -230,26 +253,13 @@ const Home = () => {
       case "result":
         return (
           <div className="step-card">
-            <h1 className="step-title">Verification Complete</h1>
             <div className="step-layout">
               <div className="progress-column">{renderProgressIndicator()}</div>
               <div className="content-column">
                 {verificationResult?.success ? (
                   <div className="result-success">
                     <h2>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
+                      <CheckCircleOutlined />
                       Access Granted
                     </h2>
                     <div className="result-info">
@@ -269,19 +279,7 @@ const Home = () => {
                 ) : (
                   <div className="result-error">
                     <h2>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
+                      <DoDisturbOnOutlined />
                       Access Denied
                     </h2>
                     <div className="result-info">
@@ -289,11 +287,11 @@ const Home = () => {
                     </div>
                   </div>
                 )}
-                <button className="action-button" onClick={reset}>
+                <div className="button" onClick={reset}>
                   {verificationResult?.success
                     ? "New Verification"
                     : "Try Again"}
-                </button>
+                </div>
               </div>
               <div className="instructions-column">{renderInstructions()}</div>
             </div>
