@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from app.utils.db import db
 
 class FaceCredential(db.Model):
@@ -14,4 +14,4 @@ class FaceCredential(db.Model):
     # Dane biometryczne
     face_encoding = db.Column(db.LargeBinary, nullable=False)
     face_image_path = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))

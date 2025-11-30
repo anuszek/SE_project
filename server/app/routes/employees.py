@@ -1,104 +1,148 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy.exc import IntegrityError
+import re
+
 from app.utils.db import db
 from app.models.employee import Employee
 from app.models.employee_face import FaceCredential
+# from app.models.qr_code import QRCredential  <-- POMIJAMY
 from app.services.face_service import FaceServices
 from app.utils.helpers import get_next_available_id
 
-import re
-import datetime
-
-MIN_NAME_LEN =3
+# Stałe walidacyjne
+MIN_NAME_LEN = 3
 MAX_EMAIL_LEN = 300
-# Tworzymy "Blueprint" - czyli moduł aplikacji
+
 employees_bp = Blueprint('employees', __name__)
 
 @employees_bp.route('/register', methods=['POST'])
-def register_emplyee():
+def register_employee():
+    """
+    Rejestracja pracownika (BEZ QR).
+    Tylko Dane Osobowe + Twarz.
+    """
     if not request.is_json:
-        return jsonify({"error": "Zły format"}), 400
+        return jsonify({"error": "Wymagany format JSON"}), 400
+    
     data = request.get_json()
-    first_name =  data.get('first_name')
+    first_name = data.get('first_name')
     last_name = data.get('last_name')
-    email= data.get('email')
-    image = data.get('image')
-    if not first_name or not last_name or not email or not image:
-        return jsonify({
-            'error':'Bad json sth missing'
-        }), 400
+    email = data.get('email')
+    image_base64 = data.get('image')
+
+    if not first_name or not last_name or not email or not image_base64:
+        return jsonify({'error': 'Missing required fields'}), 400
     
+    # Walidacja Regex
     email_pattern = r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
-    first_name_pattern = r"^[A-Za-z0-9_.'-]+$"
-    last_name_pattern = r"^[A-Za-z0-9_.'-]+$"
+    name_pattern = r"^[A-Za-z0-9_.'-]+$"
+
     if (
-        not re.match(email_pattern, email)
-        or not re.match(first_name, first_name_pattern)
-        or not re.match(last_name, last_name_pattern)
-        or not len(email) < MAX_EMAIL_LEN
-        or not len(first_name) > MIN_NAME_LEN
-        or not len(last_name) > MIN_NAME_LEN
+        not re.match(email_pattern, email) or
+        not re.match(name_pattern, first_name) or
+        not re.match(name_pattern, last_name) or
+        len(email) > MAX_EMAIL_LEN or
+        len(first_name) < MIN_NAME_LEN or
+        len(last_name) < MIN_NAME_LEN
     ):
-        return jsonify({"message":"Invalid name, last name or email"}),400
-    
+        return jsonify({"message": "Invalid data format"}), 400
+
+    # Przetwarzanie zdjęcia
     try:
-        id = get_next_available_id()
+        image_stream = FaceServices.handle_base64_image(image_base64)
+        if image_stream is None:
+             return jsonify({"error": "Invalid Base64 image"}), 400
+
+        face_encoding_np = FaceServices.get_encoding_from_image(image_stream)
+        if face_encoding_np is None:
+            return jsonify({"error": "No face detected"}), 400
+        
+        face_bytes = FaceServices.encoding_to_bytes(face_encoding_np)
+
+    except Exception as e:
+        return jsonify({"error": f"Image error: {str(e)}"}), 500
+
+    # Zapis do bazy
+    try:
+        new_id = get_next_available_id()
 
         new_employee = Employee(
-            id=id,   
+            id=new_id,   
             first_name=first_name,
             last_name=last_name,
             email=email
         )
         db.session.add(new_employee)
-        db.session.flush() 
+        db.session.flush()
 
         new_face = FaceCredential(
             employee_id=new_employee.id, 
-            face_encoding=image,
+            face_encoding=face_bytes,
             face_image_path="memory"
         )
         db.session.add(new_face)
-        db.session.flush()
-        # to samo dla qr, gerneowanie i dodanie, 
+        
+        # --- POMIJAMY GENEROWANIE QR ---
+        # (kod QR usunięty zgodnie z prośbą)
 
-       
         db.session.commit()
+
+        return jsonify({
+            "message": "Employee registered successfully",
+            "employee_id": new_id
+        }), 201
+
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Email already exists"}), 409
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
-    #qr -> generowanie jak bedzie logika
-    #image -> po face regontionion
 
 
-@employees_bp.route('/verify', method=['POST'])
-def verify_emplyee():
+@employees_bp.route('/verify', methods=['POST'])
+def verify_employee():
+    """
+    Weryfikacja dostępu (BEZ QR).
+    Szukamy twarzy w całej bazie (1-do-N).
+    """
     if not request.is_json:
-        return jsonify({"error": "Zły format"}), 400
+        return jsonify({"error": "Wymagany format JSON"}), 400
+    
     data = request.get_json()
-    qr_input=data.get('qr_coode') # zmianic nazwy odpwowiednie
-    image_input= data.get('image')
+    image_input_base64 = data.get('image')
 
-    if not qr_input or not image_input:
-        return jsonify({'error':'Bad type brakuje image albo qr'}), 400
+    if not image_input_base64:
+        return jsonify({'error': 'Missing image'}), 400
     
-    # validate qr TO-DO
+    # 1. Przetworzenie zdjęcia z kamery
+    try:
+        image_stream = FaceServices.handle_base64_image(image_input_base64)
+        uploaded_encoding = FaceServices.get_encoding_from_image(image_stream)
+
+        if uploaded_encoding is None:
+            return jsonify({"status": "denied", "message": "No face detected"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Processing error: {str(e)}"}), 500
+
+    # 2. Przeszukiwanie bazy (ponieważ nie mamy QR, musimy sprawdzić wszystkich)
+    all_faces = FaceCredential.query.all()
+    found_employee = None
+
+    for face_record in all_faces:
+        is_match = FaceServices.compare_faces(face_record.face_encoding, uploaded_encoding)
+        if is_match:
+            found_employee = face_record.employee
+            break # Znaleziono, przerywamy pętlę
     
-    employee_id =1 #placeholder
-    # jeli image w zlym typie dto dopiac
-    employee_face_from_db= FaceCredential.query.filter(employee_id=employee_id).first()
-    is_match= FaceServices.compare_faces(employee_face_from_db,image_input)
-    
-    if is_match:
-        employee = Employee.query.get(employee_id)
+    if found_employee:
         return jsonify({
             "status": "granted",
-            "message": f"Dostęp przyznany. Witaj, {employee.first_name}!",
-            "employee_id": employee.id
+            "message": f"Dostęp przyznany. Witaj, {found_employee.first_name}!",
+            "employee_id": found_employee.id
         }), 200
     else:
-        # KOD QR SIĘ ZGADZA, ALE TWARZ NIE
         return jsonify({
             "status": "denied",
-            "message": "Weryfikacja biometryczna nieudana. Twarz nie pasuje do kodu QR."
+            "message": "Nie rozpoznano osoby."
         }), 401
