@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import {
+  PeopleOutline,
+  CheckCircleOutlineOutlined,
+  ChecklistRtlOutlined,
+  BrowseGalleryOutlined,
+  SyncOutlined,
+  PersonAddAltOutlined,
+  ManageAccountsOutlined,
+  AssessmentOutlined,
+  AccountCircleOutlined,
+  QrCodeOutlined,
+} from "@mui/icons-material";
 import "./Dashboard.css";
 
 const Dashboard = () => {
@@ -83,27 +95,27 @@ const Dashboard = () => {
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <h1>Admin Dashboard</h1>
-        <p className="dashboard-subtitle">Welcome back! Here's your overview</p>
+        <div>
+          <h1>Admin Dashboard</h1>
+          <p className="dashboard-subtitle">
+            Welcome back! Here's your overview
+          </p>
+        </div>
+        <div>
+          <Link to="/" className="button">
+            Back to Home
+          </Link>
+          <Link to="/admin/settings" className="button">
+            Settings
+          </Link>
+        </div>
       </div>
 
       {/* Statistics Cards */}
       <div className="stats-grid">
         <div className="stat-card stat-card-primary">
           <div className="stat-icon">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
+            <PeopleOutline />
           </div>
           <div className="stat-content">
             <h3>{stats.totalEmployees}</h3>
@@ -113,19 +125,7 @@ const Dashboard = () => {
 
         <div className="stat-card stat-card-success">
           <div className="stat-icon">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+            <CheckCircleOutlineOutlined />
           </div>
           <div className="stat-content">
             <h3>{stats.activeEmployees}</h3>
@@ -135,19 +135,7 @@ const Dashboard = () => {
 
         <div className="stat-card stat-card-info">
           <div className="stat-icon">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
-              />
-            </svg>
+            <ChecklistRtlOutlined />
           </div>
           <div className="stat-content">
             <h3>{stats.todayAccess}</h3>
@@ -157,19 +145,7 @@ const Dashboard = () => {
 
         <div className="stat-card stat-card-warning">
           <div className="stat-icon">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+            <BrowseGalleryOutlined />
           </div>
           <div className="stat-content">
             <h3>{stats.pendingVerifications}</h3>
@@ -183,19 +159,7 @@ const Dashboard = () => {
         <h2>Quick Actions</h2>
         <div className="actions-grid">
           <Link to="/admin/employees" className="action-button action-primary">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
-              />
-            </svg>
+            <PersonAddAltOutlined />
             <span>Add Employee</span>
           </Link>
 
@@ -203,58 +167,22 @@ const Dashboard = () => {
             to="/admin/employees"
             className="action-button action-secondary"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-              />
-            </svg>
+            <ManageAccountsOutlined />
             <span>Manage Employees</span>
           </Link>
 
           <Link to="/admin/reports" className="action-button action-info">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
+            <AssessmentOutlined />
             <span>View Reports</span>
           </Link>
 
-          <button
+          <div
             className="action-button action-success"
             onClick={fetchDashboardData}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
+            <SyncOutlined />
             <span>Refresh Data</span>
-          </button>
+          </div>
         </div>
       </div>
 
@@ -294,36 +222,12 @@ const Dashboard = () => {
                   <td className="method-cell">
                     {activity.method === "Face Recognition" ? (
                       <span className="method-tag method-face">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
+                        <AccountCircleOutlined />
                         Face
                       </span>
                     ) : (
                       <span className="method-tag method-qr">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
-                          />
-                        </svg>
+                        <QrCodeOutlined />
                         QR Code
                       </span>
                     )}
