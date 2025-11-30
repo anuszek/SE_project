@@ -1,33 +1,24 @@
-import React, { useRef, useCallback } from 'react';
-import Webcam from 'react-webcam';
+import React from "react";
+import { Scanner } from "@yudiel/react-qr-scanner";
 
-const videoConstraints = {
-  width: 1280,
-  height: 720,
-  facingMode: 'user',
-};
-
-const FaceCapture = ({ onCapture }) => {
-  const webcamRef = useRef(null);
-
-  const capture = useCallback(() => {
-    const imageSrc = webcamRef.current.getScreenshot();
-    onCapture(imageSrc);
-  }, [webcamRef, onCapture]);
+const QRReader = ({ onScan }) => {
+  const handleScan = (detectedCodes) => {
+    console.log("Detected codes:", detectedCodes);
+    // detectedCodes is an array of IDetectedBarcode objects
+    detectedCodes.forEach((code) => {
+      console.log(`Format: ${code.format}, Value: ${code.rawValue}`);
+    });
+  };
 
   return (
-    <>
-      <Webcam
-        audio={false}
-        height={720}
-        ref={webcamRef}
-        screenshotFormat="image/jpeg"
-        width={1280}
-        videoConstraints={videoConstraints}
-      />
-      <button onClick={capture}>Capture photo</button>
-    </>
+    <Scanner
+      onScan={handleScan}
+      onError={(error) => console.error(error)}
+      components={{
+        audio: true,
+      }}
+    />
   );
 };
 
-export default FaceCapture;
+export default QRReader;
