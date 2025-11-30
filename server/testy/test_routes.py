@@ -8,7 +8,7 @@ def test_register_employee_json_base64(client):
     """
     Testuje rejestrację BEZ QR (tylko zdjęcie i dane).
     """
-    real_image_path = "/home/fisher/SE_project/faces_test/face.jpg"
+    real_image_path = "../faces_test/face.jpg"
     
     # Otwórz prawdziwy plik
     with open(real_image_path, "rb") as img_file:
@@ -41,14 +41,13 @@ def test_register_employee_json_base64(client):
     
     assert "Employee registered successfully" in json_data["message"]
     assert "employee_id" in json_data
-    # Upewniamy się, że NIE MA tu qr_code (bo go wyłączyliśmy)
-    assert "qr_code" not in json_data
+    assert "qr_code" in json_data
 
 def test_verify_employee_success(client):
     """
     Testuje pełny proces: Rejestracja -> Weryfikacja.
     """
-    real_image_path = "/home/fisher/SE_project/faces_test/face.jpg"
+    real_image_path = "../faces_test/face.jpg"
     
     # 1. Przygotowanie zdjęcia (Base64)
     with open(real_image_path, "rb") as img_file:
@@ -98,7 +97,7 @@ def test_verify_employee_failure(client):
     """
     Testuje sytuację, gdy twarz nie pasuje (Symulacja innej osoby).
     """
-    real_image_path = "/home/fisher/SE_project/faces_test/face.jpg"
+    real_image_path = "../faces_test/face.jpg"
     with open(real_image_path, "rb") as img_file:
         base64_str = base64.b64encode(img_file.read()).decode('utf-8')
         full_base64 = f"data:image/jpeg;base64,{base64_str}"

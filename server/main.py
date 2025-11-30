@@ -4,6 +4,8 @@ import os
 from flask import Flask
 from flask_migrate import Migrate
 from app.utils.db import db
+import atexit
+from apscheduler.schedulers.background import BackgroundScheduler
 
 # GLOBAL migrate object
 migrate = Migrate()
@@ -62,6 +64,9 @@ def create_app():
     # Tu później dodasz rejestrację tras (routes), np.:
     from app.routes.employees import employees_bp
     app.register_blueprint(employees_bp, url_prefix="/api/employees")
+
+    # Shedulery, zadania okresowe itp. mogą być dodane tutaj
+    scheduler = BackgroundScheduler()
 
     return app
 

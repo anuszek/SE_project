@@ -1,13 +1,15 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy.exc import IntegrityError
 import re
+import base64
 
 from app.utils.db import db
 from app.models.employee import Employee
 from app.models.employee_face import FaceCredential
-# from app.models.qr_code import QRCredential  <-- POMIJAMY
+from app.models.qr_code import QRCredential
 from app.services.face_service import FaceServices
-from app.utils.helpers import get_next_available_id
+from app.services.qr_service import QRService
+from app.utils.helpers import delete_inactive_qr_codes, get_next_available_id, refresh_expired_qr_codes
 
 # Stałe walidacyjne
 MIN_NAME_LEN = 3
@@ -65,6 +67,7 @@ def register_employee():
     # Zapis do bazy
     try:
         new_id = get_next_available_id()
+        qr_code_data, expires_at = QRService.generate_credential()
 
         new_employee = Employee(
             id=new_id,   
@@ -81,15 +84,24 @@ def register_employee():
             face_image_path="memory"
         )
         db.session.add(new_face)
-        
-        # --- POMIJAMY GENEROWANIE QR ---
-        # (kod QR usunięty zgodnie z prośbą)
+        db.session.flush()
 
+        new_qr = QRCredential(
+            employee_id=new_employee.id,
+            qr_code_data=qr_code_data,
+            expires_at=expires_at,
+            is_active=True
+        )
+        db.session.add(new_qr)
         db.session.commit()
+
+        qr_image_datauri = QRService.generate_qr_data_uri(qr_code_data)
 
         return jsonify({
             "message": "Employee registered successfully",
-            "employee_id": new_id
+            "employee_id": new_employee.id,
+            "qr_code": qr_code_data,
+            "qr_image": qr_image_datauri
         }), 201
 
     except IntegrityError:
@@ -146,3 +158,28 @@ def verify_employee():
             "status": "denied",
             "message": "Nie rozpoznano osoby."
         }), 401
+
+@employees_bp.route('/admin/clean_qr', methods=['POST', 'GET'])
+def admin_clean_qr():
+    """
+    Wywołanie: usuń nieaktywne i odśwież wygasłe. Zabezpiecz w produkcji (token/IP).
+    """
+
+    # opcjonalnie: najpierw usuń nieaktywne, potem odśwież wygasłe
+    deleted = delete_inactive_qr_codes()
+    refreshed = refresh_expired_qr_codes()
+    return {"deleted": deleted, "refreshed": refreshed}, 200
+
+@employees_bp.route('/<int:employee_id>/qr', methods=['GET'])
+def get_employee_qr_data(employee_id):
+
+    cred = QRCredential.query.filter_by(employee_id=employee_id, is_active=True).first()
+
+    if not cred:
+        return jsonify({"error": "QR not found"}), 404
+    
+    png_bytes = QRService.generate_qr_img(cred.qr_code_data)
+
+    data_uri = "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii")
+
+    return jsonify({"qr_code": cred.qr_code_data, "qr_image": data_uri})
