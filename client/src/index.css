@@ -116,6 +116,7 @@ body {
   background-color: var(--color-background-dark);
   color: var(--color-text-main);
   user-select: none;
+  
 }
 
 code {
@@ -130,7 +131,7 @@ code {
   border-radius: var(--radius-lg);
   text-decoration: none;
   font-weight: var(--font-semibold);
-  margin-left: var(--spacing-md);
+  text-align: center;
   cursor: pointer;
 }
 
@@ -141,4 +142,10 @@ code {
 
 h1 {
   font-weight: var(--font-normal);
+}
+
+hr.hr-line {
+  width: 80%;
+  border-top: .1em solid var(--color-primary);
+  border-radius: var(--radius-sm);
 }

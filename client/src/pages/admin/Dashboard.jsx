@@ -101,7 +101,7 @@ const Dashboard = () => {
             Welcome back! Here's your overview
           </p>
         </div>
-        <div>
+        <div className="header-actions">
           <Link to="/" className="button">
             Back to Home
           </Link>

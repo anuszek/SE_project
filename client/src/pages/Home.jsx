@@ -313,7 +313,7 @@ const Home = () => {
           <LockOutlined />
           Access Control System
         </div>
-        <Link to="/admin/dashboard" className="button">
+        <Link to="/login" className="button">
           Admin Portal
         </Link>
       </div>

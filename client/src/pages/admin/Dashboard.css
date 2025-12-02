@@ -29,6 +29,11 @@
   font-size: var(--font-md);
 }
 
+.header-actions {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
 
 /* Loading State */
 .loading {
