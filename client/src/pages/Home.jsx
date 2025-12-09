@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   LockOutlined,
@@ -12,14 +12,16 @@ import { verify } from "../api/verify";
 import "./Home.css";
 
 const Home = () => {
-  const [step, setStep] = useState("qr"); // 'qr', 'face', 'verifying', 'result'
+  const [step, setStep] = useState("qr"); // 'qr', 'face', 'verifying-background', 'result'
   const [qrData, setQrData] = useState(null);
   const [faceImage, setFaceImage] = useState(null);
   const [verificationResult, setVerificationResult] = useState(null);
+  const [accessGranted, setAccessGranted] = useState(false);
 
   const handleQrScan = (data) => {
     if (data) {
       setQrData(data);
+      setAccessGranted(true);
       setStep("face");
     }
   };
@@ -27,42 +29,26 @@ const Home = () => {
   const handleFaceCapture = (image) => {
     if (image) {
       setFaceImage(image);
-      setStep("verifying");
+      setStep("verifying-background");
       handleVerification(qrData, image);
+      // Reset for the next user after a short delay
+      setTimeout(() => reset(), 2000);
     }
   };
 
   const handleVerification = async (qr, face) => {
-    // try {
-    //   const result = await verify(qr, face);
-    //   setVerificationResult({ success: true, data: result });
-    // } catch (error) {
-    //   setVerificationResult({
-    //     success: false,
-    //     error: error.message || "Verification failed",
-    //   });
-    // } finally {
-    //   setStep("result");
-    // }
-
-    // Simulated verification for demo purposes
-    setTimeout(() => {
-      if (!qr) {
-        setVerificationResult({
-          success: true,
-          data: {
-            employee: { name: "John Doe", id: "12345" },
-            timestamp: Date.now(),
-          },
-        });
-      } else {
-        setVerificationResult({
-          success: false,
-          error: "Invalid QR code. Access denied.",
-        });
-      }
-      setStep("result");
-    }, 2000);
+    try {
+      const result = await verify(qr, face);
+      // You can use this result for logging or minor UI feedback
+      setVerificationResult({ success: true, data: result });
+      console.log("Background verification success:", result);
+    } catch (error) {
+      setVerificationResult({
+        success: false,
+        error: error.message || "Verification failed",
+      });
+      console.error("Background verification error:", error);
+    }
   };
 
   const reset = () => {
@@ -70,10 +56,11 @@ const Home = () => {
     setQrData(null);
     setFaceImage(null);
     setVerificationResult(null);
+    setAccessGranted(false);
   };
 
   const getStepNumber = () => {
-    const steps = { qr: 1, face: 2, verifying: 3, result: 3 };
+    const steps = { qr: 1, face: 2, "verifying-background": 3, result: 3 };
     return steps[step] || 1;
   };
 
@@ -88,7 +75,7 @@ const Home = () => {
               currentStep >= 1 ? "active" : ""
             } ${currentStep > 1 ? "completed" : ""}`}
           >
-            {currentStep > 1 ? <CheckOutlined></CheckOutlined> : "1"}
+            {currentStep > 1 ? <CheckOutlined /> : "1"}
           </div>
           <span
             className={`progress-step-label ${
@@ -109,7 +96,7 @@ const Home = () => {
               currentStep >= 2 ? "active" : ""
             } ${currentStep > 2 ? "completed" : ""}`}
           >
-            {currentStep > 2 ? <CheckOutlined></CheckOutlined> : "2"}
+            {currentStep > 2 ? <CheckOutlined /> : "2"}
           </div>
           <span
             className={`progress-step-label ${
@@ -163,32 +150,18 @@ const Home = () => {
             <p>
               <strong>Instructions:</strong>
             </p>
-            <p>• Look directly at the camera</p>
-            <p>• Ensure good lighting conditions</p>
-            <p>• Remove any face coverings or sunglasses</p>
+            <p>• Look directly at the camera for a quick photo</p>
+            <p>• This is for identity verification purposes</p>
+            <p>• The capture is automatic</p>
           </div>
         );
-      case "verifying":
+      case "verifying-background":
         return (
-          <div className="instructions">
-            <p>
-              <strong>Status:</strong>
-            </p>
-            <p>• Processing your credentials</p>
-            <p>• Verifying identity</p>
-            <p>• Please wait...</p>
-          </div>
-        );
-      case "result":
-        return (
-          <div className="instructions">
-            <p>
-              <strong>Next Steps:</strong>
-            </p>
-            <p>• Review the verification result</p>
-            <p>• Click the button to start a new verification</p>
-            <p>• Contact support if you need assistance</p>
-          </div>
+            <div className="instructions">
+                <p><strong>Status:</strong></p>
+                <p>• Verification is processing in the background</p>
+                <p>• Thank you!</p>
+            </div>
         );
       default:
         return null;
@@ -220,82 +193,39 @@ const Home = () => {
             <div className="step-layout">
               <div className="progress-column">{renderProgressIndicator()}</div>
               <div className="content-column">
-                <p className="step-description">
-                  Position your face in the frame for identity verification
-                </p>
-                <div className="verification-container">
-                  <FaceCapture onCapture={handleFaceCapture} />
-                </div>
-              </div>
-              <div className="instructions-column">{renderInstructions()}</div>
-            </div>
-          </div>
-        );
-      case "verifying":
-        return (
-          <div className="step-card">
-            <div className="step-layout">
-              <div className="progress-column">{renderProgressIndicator()}</div>
-              <div className="content-column">
-                <p className="step-description">
-                  Please wait while we verify your credentials...
-                </p>
-
-                <div className="verifying-state">
-                  <div className="spinner"></div>
-                  <p className="verifying-text">Processing verification...</p>
-                </div>
-              </div>
-              <div className="instructions-column">{renderInstructions()}</div>
-            </div>
-          </div>
-        );
-      case "result":
-        return (
-          <div className="step-card">
-            <div className="step-layout">
-              <div className="progress-column">{renderProgressIndicator()}</div>
-              <div className="content-column">
-                {verificationResult?.success ? (
-                  <div className="result-success">
+                {accessGranted && (
+                  <div className="result-success" style={{ marginBottom: '20px' }}>
                     <h2>
                       <CheckCircleOutlined />
                       Access Granted
                     </h2>
-                    <div className="result-info">
-                      <p>
-                        <strong>
-                          Welcome, {verificationResult.data.employee.name}!
-                        </strong>
-                      </p>
-                      <p className="timestamp">
-                        Access granted at:{" "}
-                        {new Date(
-                          verificationResult.data.timestamp
-                        ).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="result-error">
-                    <h2>
-                      <DoDisturbOnOutlined />
-                      Access Denied
-                    </h2>
-                    <div className="result-info">
-                      <p>{verificationResult?.error}</p>
-                    </div>
                   </div>
                 )}
-                <div className="button" onClick={reset}>
-                  {verificationResult?.success
-                    ? "New Verification"
-                    : "Try Again"}
+                <p className="step-description">
+                  Please look at the camera for identity verification.
+                </p>
+                <div className="verification-container">
+                  <FaceCapture onCapture={handleFaceCapture} automatic={true} />
                 </div>
               </div>
               <div className="instructions-column">{renderInstructions()}</div>
             </div>
           </div>
+        );
+      case "verifying-background":
+        return (
+            <div className="step-card">
+                <div className="step-layout">
+                    <div className="progress-column">{renderProgressIndicator()}</div>
+                    <div className="content-column">
+                        <div className="result-success">
+                            <h2><CheckCircleOutlined /> Thank You!</h2>
+                            <p className="step-description">Your verification is being processed.</p>
+                        </div>
+                    </div>
+                    <div className="instructions-column">{renderInstructions()}</div>
+                </div>
+            </div>
         );
       default:
         return (

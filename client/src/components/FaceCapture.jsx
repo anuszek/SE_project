@@ -1,8 +1,9 @@
-import React, { useRef, useState, useEffect } from "react";
-import { Button } from "@mui/material";
 import { CameraAlt, CheckCircle, Refresh } from "@mui/icons-material";
+import { Button } from "@mui/material";
+import React, { useEffect, useRef, useState } from "react";
+import "./FaceCapture.css";
 
-const FaceCapture = ({ onCapture }) => {
+const FaceCapture = ({ onCapture, automatic = false }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [stream, setStream] = useState(null);
@@ -16,6 +17,15 @@ const FaceCapture = ({ onCapture }) => {
       stopCamera();
     };
   }, []);
+
+  useEffect(() => {
+    if (automatic && !isLoading && !error && stream) {
+      const timer = setTimeout(() => {
+        captureImage(true); // Pass a flag to indicate automatic capture
+      }, 2000); // 2-second delay
+      return () => clearTimeout(timer);
+    }
+  }, [automatic, isLoading, error, stream]);
 
   const startCamera = async () => {
     try {
@@ -48,7 +58,7 @@ const FaceCapture = ({ onCapture }) => {
     }
   };
 
-  const captureImage = () => {
+  const captureImage = (isAutomatic = false) => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -63,14 +73,19 @@ const FaceCapture = ({ onCapture }) => {
 
       // Convert canvas to base64 image
       const imageData = canvas.toDataURL("image/jpeg", 0.8);
-      setCapturedImage(imageData);
+
+      if (isAutomatic) {
+        handleConfirm(imageData);
+      } else {
+        setCapturedImage(imageData);
+      }
     }
   };
 
-  const handleConfirm = () => {
-    if (capturedImage && onCapture) {
+  const handleConfirm = (image = capturedImage) => {
+    if (image && onCapture) {
       stopCamera();
-      onCapture(capturedImage);
+      onCapture(image);
     }
   };
 
@@ -82,99 +97,49 @@ const FaceCapture = ({ onCapture }) => {
   };
 
   return (
-    <div
-      style={{
-        width: "100%",
-        maxWidth: "500px",
-        margin: "0 auto",
-        textAlign: "center",
-      }}
-    >
+    <div className="face-capture-container">
       <h2>Face Capture</h2>
 
-      {error && (
-        <div
-          style={{
-            padding: "15px",
-            marginBottom: "20px",
-            background: "#ffebee",
-            color: "#c62828",
-            borderRadius: "8px",
-          }}
-        >
-          {error}
-        </div>
-      )}
+      {error && <div className="face-capture-error">{error}</div>}
 
       {isLoading && !error && (
-        <div style={{ padding: "20px" }}>
+        <div className="face-capture-loading">
           <p>Loading camera...</p>
         </div>
       )}
 
-      <div
-        style={{
-          position: "relative",
-          width: "100%",
-          maxWidth: "640px",
-          margin: "0 auto",
-          borderRadius: "12px",
-          overflow: "hidden",
-          background: "#000",
-        }}
-      >
+      <div className="face-capture-video-container">
         {!capturedImage ? (
           <>
             <video
               ref={videoRef}
               autoPlay
               playsInline
-              style={{
-                width: "100%",
-                height: "auto",
-                display: isLoading || error ? "none" : "block",
-              }}
+              className={`face-capture-video ${
+                isLoading || error ? "hidden" : ""
+              }`}
             />
             {/* Face guide overlay */}
-            <div
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                width: "200px",
-                height: "250px",
-                border: "3px solid rgba(76, 175, 80, 0.6)",
-                borderRadius: "50%",
-                pointerEvents: "none",
-              }}
-            />
+            <div className="face-capture-face-guide" />
           </>
         ) : (
           <img
             src={capturedImage}
             alt="Captured face"
-            style={{ width: "100%", height: "auto" }}
+            className="face-capture-captured-image"
           />
         )}
       </div>
 
-      <canvas ref={canvasRef} style={{ display: "none" }} />
+      <canvas ref={canvasRef} className="face-capture-canvas" />
 
-      <div
-        style={{
-          marginTop: "20px",
-          display: "flex",
-          gap: "10px",
-          justifyContent: "center",
-        }}
-      >
+      <div className="face-capture-buttons">
         {!capturedImage ? (
           <Button
             variant="contained"
             color="primary"
             startIcon={<CameraAlt />}
-            onClick={captureImage}
+            onClick={() => captureImage(false)}
             disabled={isLoading || error}
             size="large"
           >
@@ -194,7 +159,7 @@ const FaceCapture = ({ onCapture }) => {
               variant="contained"
               color="success"
               startIcon={<CheckCircle />}
-              onClick={handleConfirm}
+              onClick={() => handleConfirm()}
               size="large"
             >
               Confirm
@@ -204,17 +169,8 @@ const FaceCapture = ({ onCapture }) => {
       </div>
 
       {!capturedImage && !error && !isLoading && (
-        <div
-          style={{
-            marginTop: "20px",
-            padding: "10px",
-            background: "#e3f2fd",
-            borderRadius: "8px",
-          }}
-        >
-          <p style={{ margin: 0, fontSize: "14px", color: "#1565c0" }}>
-            Position your face within the guide and click Capture
-          </p>
+        <div className="face-capture-info">
+          <p>Position your face within the guide and click Capture</p>
         </div>
       )}
     </div>
