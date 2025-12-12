@@ -1,27 +1,30 @@
 import base64
 from datetime import datetime, timedelta
 from unittest.mock import patch
+import numpy as np
 
 from app.models.qr_code import QRCredential
 from app.models.employee import Employee
 from app.utils.db import db
 from app.utils.helpers import refresh_expired_qr_codes, delete_inactive_qr_codes
+from app.services.qr_service import QRService
 
 
 def _fake_b64_image():
     return "data:image/jpeg;base64," + base64.b64encode(b"fake-image").decode("ascii")
 
 
-def test_register_creates_qr_and_get_png_datauri(client):
+def test_register_creates_qr_code(client):
+    """
+    Test: rejestracja -> zwraca qr_code -> GET /qr zwraca qr_code.
+    """
     img_b64 = _fake_b64_image()
-    fake_encoding = object()
+    fake_encoding = np.zeros(128, dtype=np.float64)
     fake_bytes = b"fake-encoding-bytes"
 
-    with patch('app.services.face_service.FaceServices.handle_base64_image') as mock_handle, \
-         patch('app.services.face_service.FaceServices.get_encoding_from_image') as mock_get_enc, \
+    with patch('app.services.face_service.FaceServices.get_encoding_from_image') as mock_get_enc, \
          patch('app.services.face_service.FaceServices.encoding_to_bytes') as mock_enc_to_bytes:
 
-        mock_handle.return_value = b"img-bytes"
         mock_get_enc.return_value = fake_encoding
         mock_enc_to_bytes.return_value = fake_bytes
 
@@ -36,40 +39,64 @@ def test_register_creates_qr_and_get_png_datauri(client):
         assert resp.status_code == 201, resp.get_json()
         data = resp.get_json()
         assert "employee_id" in data
+        assert "qr_code" in data
         emp_id = data["employee_id"]
+        qr_code = data["qr_code"]
 
+        # GET /qr endpoint powinien zwrócić qr_code
         get_resp = client.get(f"/api/employees/{emp_id}/qr")
         assert get_resp.status_code == 200, get_resp.get_json()
         j = get_resp.get_json()
-        assert "qr_code" in j and "qr_image" in j
-        assert j["qr_image"].startswith("data:image/png;base64,")
+        assert "qr_code" in j
+        assert j["qr_code"] == qr_code
+        assert "expires_at" in j
 
-        b64 = j["qr_image"].split(",", 1)[1]
-        png_bytes = base64.b64decode(b64)
-        assert len(png_bytes) > 8
+
+def test_validate_qr_code(app, client):
+    """
+    Test: QRService.validate_qr_code() zwraca bool.
+    """
+    with app.app_context():
+        # Utwórz pracownika z QR
+        emp = Employee(first_name="Test", last_name="User", email="test@example.com")
+        db.session.add(emp)
+        db.session.flush()
+
+        qr_data, qr_exp = QRService.generate_credential()
+        qr = QRCredential(employee_id=emp.id, qr_code_data=qr_data, expires_at=qr_exp, is_active=True)
+        db.session.add(qr)
+        db.session.commit()
+
+        # Sprawdź: ważny QR
+        assert QRService.validate_qr_code(qr_data) == True
+
+        # Sprawdź: nieistniejący QR
+        assert QRService.validate_qr_code("fake-qr") == False
+
+        # Sprawdź: nieaktywny QR
+        qr.is_active = False
+        db.session.commit()
+        assert QRService.validate_qr_code(qr_data) == False
 
 
 def test_refresh_and_delete_qr_codes(app, client):
     """
-    Używa nowych funkcji:
-    - refresh_expired_qr_codes() -> oznacza stare i tworzy nowe dla pracowników (dla expired + inactive)
-    - delete_inactive_qr_codes() -> usuwa wpisy is_active==False
+    Test: refresh_expired_qr_codes() i delete_inactive_qr_codes().
     """
     with app.app_context():
-        # przygotuj pracowników
         e1 = Employee(first_name="A", last_name="A", email="a@example.com")
         e2 = Employee(first_name="B", last_name="B", email="b@example.com")
         db.session.add_all([e1, e2])
         db.session.commit()
 
-        # e1: wygasły, aktywny
+        # e1: wygasły (aktywny)
         old_code_e1 = QRCredential(
             employee_id=e1.id,
             qr_code_data="old-e1",
             expires_at=datetime.utcnow() - timedelta(days=2),
             is_active=True
         )
-        # e2: nieaktywny wpis
+        # e2: nieaktywny
         old_code_e2 = QRCredential(
             employee_id=e2.id,
             qr_code_data="old-e2",
@@ -79,25 +106,22 @@ def test_refresh_and_delete_qr_codes(app, client):
         db.session.add_all([old_code_e1, old_code_e2])
         db.session.commit()
 
-        # odśwież (powinien utworzyć nowe aktywne kody dla e1 i e2 i oznaczyć stare jako nieaktywne)
+        # 1. Odśwież wygasłe
         refreshed = refresh_expired_qr_codes()
         assert isinstance(refreshed, list)
+        assert len(refreshed) == 1  # Tylko e1 (wygasły)
+        assert refreshed[0]["employee_id"] == e1.id
 
-        # sprawdź, że każdy pracownik ma teraz aktywny QR inny niż stary
-        qr_e1_list = QRCredential.query.filter_by(employee_id=e1.id).all()
-        assert any(q.is_active for q in qr_e1_list)
-        active_qr_e1 = [q for q in qr_e1_list if q.is_active][0]
-        assert active_qr_e1.qr_code_data != "old-e1"
-        assert active_qr_e1.expires_at is not None and active_qr_e1.expires_at > datetime.utcnow()
+        # Sprawdzenie: e1 ma nowy aktywny QR
+        qr_e1_list = QRCredential.query.filter_by(employee_id=e1.id, is_active=True).all()
+        assert len(qr_e1_list) == 1
+        assert qr_e1_list[0].qr_code_data != "old-e1"
 
-        qr_e2_list = QRCredential.query.filter_by(employee_id=e2.id).all()
-        assert any(q.is_active for q in qr_e2_list)
-        active_qr_e2 = [q for q in qr_e2_list if q.is_active][0]
-        assert active_qr_e2.qr_code_data != "old-e2"
-
-        # teraz usuń wpisy nieaktywne
+        # 2. Usuń nieaktywne
         deleted = delete_inactive_qr_codes()
         assert isinstance(deleted, dict)
-        # upewnij się, że nie ma już nieaktywnych wpisów
+        assert deleted["deleted_count"] >= 1
+
+        # Brak nieaktywnych
         still_inactive = QRCredential.query.filter_by(is_active=False).all()
         assert len(still_inactive) == 0

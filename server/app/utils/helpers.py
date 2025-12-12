@@ -27,6 +27,7 @@ def get_next_available_id():
     else: # max id
         max_id = db.session.query(func.max(Employee.id)).scalar()
         return max_id + 1
+    
 def delete_inactive_qr_codes():
     """
     Usuwa rekordy QRCredential, gdzie is_active == False.
@@ -41,7 +42,7 @@ def delete_inactive_qr_codes():
         db.session.rollback()
         raise
 
-def refresh_expired_qr_codes(valid_hours: int = 24):
+def refresh_expired_qr_codes(valid_weeks: int = 4):
     """
     Oznacza wygasłe/nieaktywne wpisy jako nieaktywne i tworzy nowe QR dla powiązanych pracowników.
     Zwraca listę wygenerowanych pozycji: [{"employee_id","new_qr","expires_at"}, ...]
@@ -55,9 +56,8 @@ def refresh_expired_qr_codes(valid_hours: int = 24):
             QRCredential.expires_at < now,
             QRCredential.is_active == True
         ).all()
-        inactive = QRCredential.query.filter_by(is_active=False).all()
 
-        employee_ids = {q.employee_id for q in (expired + inactive) if q.employee_id is not None}
+        employee_ids = {q.employee_id for q in expired if q.employee_id is not None}
 
         for emp_id in employee_ids:
             # oznacz wszystkie aktywne wpisy tego pracownika jako nieaktywne (archiwizacja)
@@ -67,7 +67,7 @@ def refresh_expired_qr_codes(valid_hours: int = 24):
                 db.session.add(o)
 
             # utwórz nowy QR
-            new_code, new_exp = QRService.generate_credential(valid_hours)
+            new_code, new_exp = QRService.generate_credential(valid_weeks)
             new_qr = QRCredential(employee_id=emp_id, qr_code_data=new_code, expires_at=new_exp, is_active=True)
             db.session.add(new_qr)
             results.append({"employee_id": emp_id, "new_qr": new_code, "expires_at": new_exp.isoformat()})

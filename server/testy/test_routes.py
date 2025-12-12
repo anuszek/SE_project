@@ -6,7 +6,7 @@ import json
 
 def test_register_employee_json_base64(client):
     """
-    Testuje rejestrację BEZ QR (tylko zdjęcie i dane).
+    Testuje rejestrację.
     """
     real_image_path = "../faces_test/face.jpg"
     
@@ -20,6 +20,7 @@ def test_register_employee_json_base64(client):
     fake_encoding = np.zeros(128, dtype=np.float64)
 
     with patch('app.services.face_service.FaceServices.get_encoding_from_image') as mock_method:
+        
         mock_method.return_value = fake_encoding
         
         # Wysyłamy JSON bez QR
@@ -71,11 +72,14 @@ def test_verify_employee_success(client):
             'email': 'verify.me@test.com',
             'image': full_base64_string
         }
-        client.post('/api/employees/register', json=reg_payload)
+        reg_resp = client.post('/api/employees/register', json=reg_payload)
+        assert reg_resp.status_code == 201
+        qr_code = reg_resp.get_json()["qr_code"]
 
         # --- KROK B: WERYFIKACJA ---
         verify_payload = {
-            'image': full_base64_string
+            'image': full_base64_string,
+            'qr_code': qr_code
         }
         
         response = client.post('/api/employees/verify', json=verify_payload)
@@ -109,18 +113,44 @@ def test_verify_employee_failure(client):
     # face_recognition.compare_faces(zera, jedynki) zwróci False, bo są różne
     face_B = np.ones(128, dtype=np.float64)
 
-    with patch('app.services.face_service.FaceServices.get_encoding_from_image') as mock_method:
-        
+    with patch('app.services.face_service.FaceServices.get_encoding_from_image') as mock_get_enc, \
+         patch('app.services.face_service.FaceServices.encoding_to_bytes') as mock_enc_to_bytes, \
+         patch('app.services.face_service.FaceServices.compare_faces') as mock_compare:
+
         # 1. Rejestrujemy Osobę A (Mock zwraca zera)
-        mock_method.return_value = face_A
-        client.post('/api/employees/register', json={
-            'first_name': 'Osoba', 'last_name': 'A', 'email': 'a@test.com', 'image': full_base64
+        mock_get_enc.return_value = face_A
+        mock_enc_to_bytes.return_value = b"enc-A"
+        reg_resp = client.post('/api/employees/register', json={
+            'first_name': 'Osoba', 'last_name': 'Testowa', 'email': 'osoba.testowa@example.com', 'image': full_base64
         })
+        assert reg_resp.status_code == 201, reg_resp.get_json()
+        qr_code = reg_resp.get_json()["qr_code"]
 
         # 2. Próbujemy wejść jako Osoba B (Mock zwraca jedynki)
-        mock_method.return_value = face_B
-        response = client.post('/api/employees/verify', json={'image': full_base64})
+        mock_get_enc.return_value = face_B
+        mock_compare.return_value = False
+        response = client.post('/api/employees/verify', json={'image': full_base64, 'qr_code': qr_code})
 
     # Oczekujemy odrzucenia
     assert response.status_code == 401
     assert response.get_json()["status"] == "denied"
+
+def test_verify_missing_qr_code(client):
+    """
+    Testuje weryfikację bez QR -> error 400.
+    """
+    real_image_path = "../faces_test/face.jpg"
+    with open(real_image_path, "rb") as img_file:
+        base64_str = base64.b64encode(img_file.read()).decode('utf-8')
+        full_base64 = f"data:image/jpeg;base64,{base64_str}"
+
+    fake_encoding = np.zeros(128, dtype=np.float64)
+
+    with patch('app.services.face_service.FaceServices.get_encoding_from_image') as mock_get_enc:
+        mock_get_enc.return_value = fake_encoding
+        
+        response = client.post('/api/employees/verify', json={'image': full_base64})
+        # Brak qr_code -> 400
+
+    assert response.status_code == 400
+    assert "qr_code" in response.get_json()["error"].lower()

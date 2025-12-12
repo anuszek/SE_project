@@ -15,7 +15,3 @@ class QRCredential(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     is_active = db.Column(db.Boolean, default=True)
-
-    # zastąpienie ręcznego setattr by nie łamać domyślnego konstruktora SQLAlchemy
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)

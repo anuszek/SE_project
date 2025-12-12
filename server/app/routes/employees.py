@@ -1,8 +1,6 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy.exc import IntegrityError
 import re
-import base64
-
 from app.utils.db import db
 from app.models.employee import Employee
 from app.models.employee_face import FaceCredential
@@ -95,13 +93,10 @@ def register_employee():
         db.session.add(new_qr)
         db.session.commit()
 
-        qr_image_datauri = QRService.generate_qr_data_uri(qr_code_data)
-
         return jsonify({
             "message": "Employee registered successfully",
             "employee_id": new_employee.id,
             "qr_code": qr_code_data,
-            "qr_image": qr_image_datauri
         }), 201
 
     except IntegrityError:
@@ -115,7 +110,7 @@ def register_employee():
 @employees_bp.route('/verify', methods=['POST'])
 def verify_employee():
     """
-    Weryfikacja dostępu (BEZ QR).
+    Weryfikacja pełna pracownika na podstawie zdjęcia i QR.
     Szukamy twarzy w całej bazie (1-do-N).
     """
     if not request.is_json:
@@ -123,9 +118,20 @@ def verify_employee():
     
     data = request.get_json()
     image_input_base64 = data.get('image')
+    qr_code = data.get('qr_code')
 
     if not image_input_base64:
         return jsonify({'error': 'Missing image'}), 400
+    
+    if not qr_code:
+        return jsonify({'error': 'Missing qr_code'}), 400
+    
+    is_valid = QRService.validate_qr_code(qr_code)
+    if not is_valid:
+        return jsonify({
+            "status": "denied",
+            "message": "Nieprawidłowy lub wygasły kod QR."
+        }), 401
     
     # 1. Przetworzenie zdjęcia z kamery
     try:
@@ -151,7 +157,8 @@ def verify_employee():
         return jsonify({
             "status": "granted",
             "message": f"Dostęp przyznany. Witaj, {found_employee.first_name}!",
-            "employee_id": found_employee.id
+            "employee_id": found_employee.id,
+            "qr_code": qr_code
         }), 200
     else:
         return jsonify({
@@ -172,14 +179,16 @@ def admin_clean_qr():
 
 @employees_bp.route('/<int:employee_id>/qr', methods=['GET'])
 def get_employee_qr_data(employee_id):
+    """Zwraca QR code dla pracownika"""
+    employee = Employee.query.get(employee_id)
+    if not employee:
+        return jsonify({"error": "Employee not found"}), 404
 
-    cred = QRCredential.query.filter_by(employee_id=employee_id, is_active=True).first()
+    qr = QRCredential.query.filter_by(employee_id=employee_id, is_active=True).first()
+    if not qr:
+        return jsonify({"error": "No active QR code"}), 404
 
-    if not cred:
-        return jsonify({"error": "QR not found"}), 404
-    
-    png_bytes = QRService.generate_qr_img(cred.qr_code_data)
-
-    data_uri = "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii")
-
-    return jsonify({"qr_code": cred.qr_code_data, "qr_image": data_uri})
+    return jsonify({
+        "qr_code": qr.qr_code_data,
+        "expires_at": qr.expires_at.isoformat() if qr.expires_at else None
+    }), 200

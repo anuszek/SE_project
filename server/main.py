@@ -1,11 +1,12 @@
 import warnings 
 warnings.filterwarnings("ignore", category=UserWarning, module='face_recognition_models')
 import os
+import atexit
 from flask import Flask
 from flask_migrate import Migrate
-from app.utils.db import db
-import atexit
 from apscheduler.schedulers.background import BackgroundScheduler
+from app.utils.helpers import delete_inactive_qr_codes, refresh_expired_qr_codes
+from app.utils.db import db
 
 # GLOBAL migrate object
 migrate = Migrate()
@@ -65,8 +66,38 @@ def create_app():
     from app.routes.employees import employees_bp
     app.register_blueprint(employees_bp, url_prefix="/api/employees")
 
-    # Shedulery, zadania okresowe itp. mogą być dodane tutaj
+    # ----------------------------------------
+    # SCHEDULER
+    # ----------------------------------------
     scheduler = BackgroundScheduler()
+
+    # Uruchamiaj scheduler tylko gdy NIE jesteśmy w trybie TESTING
+    if not app.config.get("TESTING", False):
+        def _cleanup_job():
+            """Job: czyszczenie wygasłych i nieaktywnych QR"""
+            with app.app_context():
+                try:
+                    deleted = delete_inactive_qr_codes()
+                    refreshed = refresh_expired_qr_codes()
+                    print(f"[QR Cleanup Job] Deleted: {deleted}, Refreshed: {len(refreshed)} employees")
+                except Exception as e:
+                    print(f"[QR Cleanup Job] Error: {str(e)}")
+
+        # Dodaj job: uruchamiaj co 24 godziny
+        scheduler.add_job(
+            _cleanup_job,
+            'interval',
+            hours=24,
+            id='cleanup_qr_job',
+            replace_existing=True
+        )
+
+        # Uruchom scheduler
+        scheduler.start()
+        print("[Scheduler] Started QR cleanup job (every 24h)")
+
+        # Zamknij scheduler gdy aplikacja się wyłącza
+        atexit.register(lambda: scheduler.shutdown(wait=False))
 
     return app
 

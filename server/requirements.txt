@@ -21,5 +21,4 @@ face_recognition
 pytest
 
 # QrCode
-segno
 apscheduler
