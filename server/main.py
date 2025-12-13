@@ -1,10 +1,14 @@
+import warnings 
+warnings.filterwarnings("ignore", category=UserWarning, module='face_recognition_models')
 import os
+import atexit
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from apscheduler.schedulers.background import BackgroundScheduler
+from app.utils.helpers import delete_inactive_qr_codes, refresh_expired_qr_codes
+from app.utils.db import db
 
-# GLOBAL DB object
-db = SQLAlchemy()
+# GLOBAL migrate object
 migrate = Migrate()
 
 def create_app():
@@ -13,79 +17,90 @@ def create_app():
     Sets up the app, database, and blueprints.
     """
 
+    # ------------------------------
+    # Flask app with instance folder
+    # ------------------------------
     app = Flask(__name__, instance_relative_config=True)
 
     # Ensure instance/ folder exists
-    try:
-        os.makedirs(app.instance_path, exist_ok=True)
-    except OSError:
-        pass
+    os.makedirs(app.instance_path, exist_ok=True)
 
-    # Path: server/instance/access_system.db
+    # Absolute path to SQLite DB inside instance/
     db_path = os.path.join(app.instance_path, "access_system.db")
 
-    # SQLite database config
+    # Database config
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SECRET_KEY"] = "your-secret-key"
 
-    # Init DB + migrations
+    # Initialize DB + migrations
     db.init_app(app)
     migrate.init_app(app, db)
 
     # ----------------------------------------
-    # IMPORT MODELS (so SQLAlchemy knows them)
-    # Only import models that exist under `app/models`
+    # KONTEKST APLIKACJI I TWORZENIE BAZY
     # ----------------------------------------
-    try:
+    with app.app_context():
+        # 1. IMPORT MODELI
+        # Ważne: Musimy zaimportować klasy ze wszystkich plików modeli,
+        # żeby SQLAlchemy wiedziało o ich istnieniu przed create_all().
+        
         from app.models.employee import Employee
-    except Exception:
-        Employee = None
+        from app.models.employee_face import FaceCredential
+        from app.models.qr_code import QRCredential  # Pamiętaj, klasa nazywa się QRCredential
 
-    try:
-        from app.models.access_log import AccessLog
-    except Exception:
-        AccessLog = None
+        # 2. TWORZENIE TABEL
+        # SQLAlchemy przeskanuje zaimportowane modele i utworzy brakujące tabele
+        db.create_all()
+
+        # Logowanie dla pewności
+        print("-" * 50)
+        print(f"Connected to DB at: {db_path}")
+        print("Detected tables:", db.metadata.tables.keys())
+        print("-" * 50)
 
     # ----------------------------------------
     # REGISTER BLUEPRINTS
-    # (add real ones later)
     # ----------------------------------------
-    # Import blueprints from `app/routes` (if present)
-    try:
-        from app.routes.verify import verify_bp
-    except Exception:
-        verify_bp = None
-
-    try:
-        from app.routes.employees import employees_bp
-    except Exception:
-        employees_bp = None
-
-    try:
-        from app.routes.auth import auth_bp
-    except Exception:
-        auth_bp = None
-
-    if verify_bp is not None:
-        app.register_blueprint(verify_bp, url_prefix="/api/verify")
-    if employees_bp is not None:
-        app.register_blueprint(employees_bp, url_prefix="/api/employees")
-    if auth_bp is not None:
-        app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    # Tu później dodasz rejestrację tras (routes), np.:
+    from app.routes.employees import employees_bp
+    app.register_blueprint(employees_bp, url_prefix="/api/employees")
 
     # ----------------------------------------
-    # Create DB if it does not exist
+    # SCHEDULER
     # ----------------------------------------
-    with app.app_context():
-        if not os.path.exists(db_path):
-            print("Creating SQLite database...")
-            db.create_all()
+    scheduler = BackgroundScheduler()
+
+    # Uruchamiaj scheduler tylko gdy NIE jesteśmy w trybie TESTING
+    if not app.config.get("TESTING", False):
+        def _cleanup_job():
+            """Job: czyszczenie wygasłych i nieaktywnych QR"""
+            with app.app_context():
+                try:
+                    deleted = delete_inactive_qr_codes()
+                    refreshed = refresh_expired_qr_codes()
+                    print(f"[QR Cleanup Job] Deleted: {deleted}, Refreshed: {len(refreshed)} employees")
+                except Exception as e:
+                    print(f"[QR Cleanup Job] Error: {str(e)}")
+
+        # Dodaj job: uruchamiaj co 24 godziny
+        scheduler.add_job(
+            _cleanup_job,
+            'interval',
+            hours=24,
+            id='cleanup_qr_job',
+            replace_existing=True
+        )
+
+        # Uruchom scheduler
+        scheduler.start()
+        print("[Scheduler] Started QR cleanup job (every 24h)")
+
+        # Zamknij scheduler gdy aplikacja się wyłącza
+        atexit.register(lambda: scheduler.shutdown(wait=False))
 
     return app
 
-
-# Run directly (useful locally / Lovable dev server)
 if __name__ == "__main__":
     app = create_app()
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=False)
