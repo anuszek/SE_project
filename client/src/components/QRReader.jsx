@@ -1,11 +1,12 @@
-import React, { useState } from "react";
 import { Scanner } from "@yudiel/react-qr-scanner";
+import React, { useState } from "react";
+import "./QRReader.css";
 
 const QRReader = ({ onScan }) => {
   const [scannedResult, setScannedResult] = useState(null);
 
   return (
-    <div style={{ width: "100%", maxWidth: "400px", margin: "0 auto" }}>
+    <div className="qr-reader-container">
       {/* The Scanner component */}
       <Scanner
         onScan={(result) => {
@@ -30,9 +31,7 @@ const QRReader = ({ onScan }) => {
 
       {/* Display result */}
       {scannedResult && (
-        <div
-          style={{ marginTop: "20px", padding: "10px", background: "#f0f0f0" }}
-        >
+        <div className="qr-reader-result">
           <strong>Scanned Value:</strong> {scannedResult}
         </div>
       )}

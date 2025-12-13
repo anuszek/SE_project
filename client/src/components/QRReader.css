@@ -1,0 +1,19 @@
+.qr-reader-container {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.qr-reader-result {
+  margin-top: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: var(--color-container-background);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-main);
+}
+
+.qr-reader-result strong {
+  display: block;
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-primary);
+}

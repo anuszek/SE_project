@@ -1,0 +1,83 @@
+.face-capture-container {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.face-capture-container h2 {
+  margin-bottom: var(--spacing-lg);
+}
+
+.face-capture-error {
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  border-radius: var(--radius-lg);
+}
+
+.face-capture-loading {
+  padding: var(--spacing-xl);
+}
+
+.face-capture-video-container {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  background: var(--color-background-dark);
+}
+
+.face-capture-video {
+  width: 100%;
+  height: auto;
+}
+
+.face-capture-video.hidden {
+  display: none;
+}
+
+.face-capture-face-guide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 200px;
+  height: 250px;
+  border: 3px solid rgba(76, 175, 80, 0.6);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.face-capture-captured-image {
+  width: 100%;
+  height: auto;
+}
+
+.face-capture-canvas {
+  display: none;
+}
+
+.face-capture-buttons {
+  margin-top: var(--spacing-lg);
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.face-capture-info {
+  margin-top: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: var(--color-info-bg);
+  border-radius: var(--radius-lg);
+}
+
+.face-capture-info p {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--color-info);
+}
