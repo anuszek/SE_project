@@ -201,6 +201,13 @@
   background-color: var(--color-success-bg);
   color: var(--color-success-text);
   border: var(--border-light);
+  position: fixed;
+  top: var(--padding-xl);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  max-width: calc(100% - 2rem);
+  box-shadow: var(--shadow-md);
 }
 
 .message-container span {
@@ -208,10 +215,10 @@
   font-size: var(--font-lg);
 }
 
-.error-close-btn {
+.error-close-btn,
+.success-close-btn {
   background: none;
   border: none;
-  color: var(--color-error);
   cursor: pointer;
   padding: 0;
   display: flex;
@@ -222,7 +229,16 @@
   flex-shrink: 0;
 }
 
-.error-close-btn:hover {
+.error-close-btn {
+  color: var(--color-error);
+}
+
+.success-close-btn {
+  color: var(--color-success-text);
+}
+
+.error-close-btn:hover,
+.success-close-btn:hover {
   opacity: 0.7;
 }
 

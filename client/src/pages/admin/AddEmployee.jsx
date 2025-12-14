@@ -28,6 +28,15 @@ const AddEmployee = () => {
     }
   }, [errorMessage]);
 
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage("");
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
   const validateForm = () => {
     const newErrors = {};
 
@@ -132,7 +141,7 @@ const AddEmployee = () => {
       setSuccessMessage("Employee added successfully!");
 
       setTimeout(() => {
-        navigate("/admin/employees");
+        navigate("/admin/dashboard");
       }, 2000);
     } catch (error) {
       setErrorMessage(
@@ -150,7 +159,7 @@ const AddEmployee = () => {
       {/* Error Toast */}
       {errorMessage && (
         <div className="message-container error-message">
-          <span>!</span> {errorMessage}
+          {errorMessage}
           <button
             type="button"
             className="error-close-btn"
@@ -239,11 +248,8 @@ const AddEmployee = () => {
               >
                 Cancel
               </div>
-              <button
-                type="submit"
-                className="button"
-              >
-                  Add Employee
+              <button type="submit" className="button">
+                Add Employee
               </button>
             </div>
           </div>
@@ -310,7 +316,15 @@ const AddEmployee = () => {
         {/* Messages */}
         {successMessage && (
           <div className="message-container success-message">
-            <span>✓</span> {successMessage}
+            {successMessage}
+            <button
+              type="button"
+              className="success-close-btn"
+              onClick={() => setSuccessMessage("")}
+              aria-label="Close success message"
+            >
+              <Close fontSize="small" />
+            </button>
           </div>
         )}
       </div>
