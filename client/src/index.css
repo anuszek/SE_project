@@ -108,6 +108,10 @@
   --gradient-warning: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
 }
 
+*{
+  font-family: "Science Gothic", sans-serif;
+}
+
 body {
   margin: 0;
   font-family: "Science Gothic", sans-serif;
@@ -130,6 +134,9 @@ code {
   border-radius: var(--radius-lg);
   text-decoration: none;
   font-weight: var(--font-semibold);
+  display: flex;
+  justify-content: center;
+  align-items: center;
   text-align: center;
   cursor: pointer;
 }

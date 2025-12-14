@@ -1,0 +1,329 @@
+.add-employee-container {
+  padding: var(--padding-2xl);
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+/* Header */
+.add-employee-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--padding-2xl);
+  background-color: var(--color-container-background);
+  padding: var(--padding-xl);
+  border-radius: var(--radius-2xl);
+}
+
+.add-employee-header h1 {
+  font-size: var(--font-2xl);
+  color: var(--color-text-main);
+  margin: 0;
+  font-weight: var(--font-semibold);
+}
+
+.add-employee-header .subtitle {
+  color: var(--color-text-muted);
+  margin: var(--spacing-sm) 0 0 0;
+  font-size: var(--font-sm);
+}
+
+/* Content Layout */
+.add-employee-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding-2xl);
+}
+
+/* Form */
+.add-employee-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--padding-2xl);
+}
+
+/* Form Section */
+.form-section,
+.face-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.form-card {
+  background: white;
+  border: var(--border-light);
+  border-radius: var(--radius-2xl);
+  padding: var(--padding-2xl);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-base);
+}
+
+.form-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.section-title {
+  font-size: var(--font-xl);
+  color: var(--color-text-main);
+  margin: 0 0 var(--spacing-lg) 0;
+  font-weight: var(--font-semibold);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.section-title svg {
+  color: var(--color-primary);
+}
+
+/* Form Groups */
+.form-group {
+  margin-bottom: var(--spacing-lg);
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+.form-group label {
+  display: block;
+  background-color: var(--color-container-background);
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text-main);
+  font-weight: var(--font-medium);
+  font-size: var(--font-sm);
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: var(--padding-md);
+  border: var(--border-light);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-sm);
+  font-family: "Science Gothic", sans-serif;
+  transition: var(--transition-base);
+  color: var(--color-text-main);
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-info-bg);
+}
+
+/* Face Capture Section */
+.face-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 500px;
+}
+
+.face-preview-container,
+.camera-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: var(--spacing-lg);
+}
+
+.captured-image {
+  width: 100%;
+  max-width: 300px;
+  height: 300px;
+  object-fit: cover;
+  border-radius: var(--radius-2xl);
+  border: 2px solid var(--border-color);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  color: var(--color-text-muted);
+}
+
+.empty-icon {
+  font-size: 3rem;
+  color: #ccc;
+}
+
+.success-text {
+  color: var(--color-success);
+  font-weight: var(--font-medium);
+  margin: 0;
+}
+
+.error-text {
+  color: var(--color-error);
+  font-weight: var(--font-medium);
+  margin: 0;
+}
+
+.button-group {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+}
+
+/* Messages */
+.message-container {
+  padding: var(--padding-lg);
+  border-radius: var(--radius-lg);
+  font-weight: var(--font-medium);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  animation: slideDown 0.3s ease-in-out;
+}
+
+.error-message {
+  position: fixed;
+  top: var(--padding-xl);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  max-width: calc(100% - 2rem);
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+  border: var(--border-light);
+  box-shadow: var(--shadow-md);
+}
+
+.success-message {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+  border: var(--border-light);
+}
+
+.message-container span {
+  font-weight: var(--font-bold);
+  font-size: var(--font-lg);
+}
+
+.error-close-btn {
+  background: none;
+  border: none;
+  color: var(--color-error);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-base);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.error-close-btn:hover {
+  opacity: 0.7;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: flex-end;
+}
+
+.form-actions button {
+  min-width: 120px;
+  padding: var(--padding-md);
+  font-weight: var(--font-semibold);
+  border-radius: var(--radius-lg);
+  transition: var(--transition-base);
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-sm);
+}
+
+.cancel-button {
+  background-color: var(--color-container-background);
+  color: var(--color-text-main);
+  border: 1px solid var(--border-color);
+}
+
+.cancel-button:hover:not(:disabled) {
+  background-color: var(--color-background-hover);
+  border-color: var(--color-text-muted);
+}
+
+.cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.submit-button {
+  background-color: var(--color-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.submit-button:hover:not(:disabled) {
+  background-color: var(--color-primary-dark);
+}
+
+.submit-button:disabled {
+  background-color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .add-employee-form {
+    grid-template-columns: 1fr;
+  }
+
+  .face-card {
+    min-height: 400px;
+  }
+}
+
+@media (max-width: 768px) {
+  .add-employee-container {
+    padding: var(--padding-lg);
+  }
+
+  .add-employee-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+
+  .add-employee-header h1 {
+    font-size: var(--font-xl);
+  }
+
+  .form-card {
+    padding: var(--padding-lg);
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+}

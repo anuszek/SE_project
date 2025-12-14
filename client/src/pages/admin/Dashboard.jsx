@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import {
-  PeopleOutline,
+  AccountCircleOutlined,
+  AssessmentOutlined,
+  BrowseGalleryOutlined,
   CheckCircleOutlineOutlined,
   ChecklistRtlOutlined,
-  BrowseGalleryOutlined,
-  SyncOutlined,
-  PersonAddAltOutlined,
   ManageAccountsOutlined,
-  AssessmentOutlined,
-  AccountCircleOutlined,
+  PeopleOutline,
+  PersonAddAltOutlined,
   QrCodeOutlined,
+  SyncOutlined,
 } from "@mui/icons-material";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import "./Dashboard.css";
 
 const Dashboard = () => {
@@ -158,7 +158,7 @@ const Dashboard = () => {
       <div className="quick-actions">
         <h2>Quick Actions</h2>
         <div className="actions-grid">
-          <Link to="/admin/employees" className="action-button action-primary">
+          <Link to="/admin/add-employee" className="action-button action-primary">
             <PersonAddAltOutlined />
             <span>Add Employee</span>
           </Link>
