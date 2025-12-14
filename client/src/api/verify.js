@@ -1,21 +1,27 @@
 import axios from "axios";
 
-const API_URL = "/api"; 
+const URL = "http://localhost:5000/api/employees";
 
-export const verify = async (qrData, faceImage) => {
+const api = axios.create({
+  baseURL: URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+export async function verifyEmployee(qrCode){
   try {
-    const formData = new FormData();
-    formData.append("qrData", qrData);
-    formData.append("faceImage", faceImage);
-
-    const response = await axios.post(`${API_URL}/verify`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-
+    const response = await api.post("/verify", { qrCode });
+    console.log("responseee" + response);
+    
     return response.data;
-  } catch (error) {
-    throw error.response.data;
+  } catch (err) {
+    const msg = err?.response?.data?.message || err?.message;
+    throw new Error(msg);
   }
 };
+
+
+
+
+

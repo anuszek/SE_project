@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import {
-  LockOutlined,
   CheckCircleOutlined,
-  DoDisturbOnOutlined,
   CheckOutlined,
+  DoDisturbOnOutlined,
+  LockOutlined,
 } from "@mui/icons-material";
-import QRReader from "../components/QRReader";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { verifyEmployee } from "../api/verify";
 import FaceCapture from "../components/FaceCapture";
-import { verify } from "../api/verify";
+import QRReader from "../components/QRReader";
 import "./Home.css";
 
 const Home = () => {
@@ -18,12 +18,13 @@ const Home = () => {
   const [verificationResult, setVerificationResult] = useState(null);
   const [accessGranted, setAccessGranted] = useState(false);
 
-  const handleQrScan = (data) => {
-    if (data) {
-      setQrData(data);
-      setAccessGranted(true);
-      setStep("face");
-    }
+  const handleQrScan = (data) => {    
+    console.log(verifyEmployee(data));
+    // if (verifyEmployee(data) == "granted") {
+    //     setQrData(data);
+    //     setAccessGranted(true);
+    //     setStep("face");
+    //   }
   };
 
   const handleFaceCapture = (image) => {
@@ -157,11 +158,13 @@ const Home = () => {
         );
       case "verifying-background":
         return (
-            <div className="instructions">
-                <p><strong>Status:</strong></p>
-                <p>• Verification is processing in the background</p>
-                <p>• Thank you!</p>
-            </div>
+          <div className="instructions">
+            <p>
+              <strong>Status:</strong>
+            </p>
+            <p>• Verification is processing in the background</p>
+            <p>• Thank you!</p>
+          </div>
         );
       default:
         return null;
@@ -194,7 +197,10 @@ const Home = () => {
               <div className="progress-column">{renderProgressIndicator()}</div>
               <div className="content-column">
                 {accessGranted && (
-                  <div className="result-success" style={{ marginBottom: '20px' }}>
+                  <div
+                    className="result-success"
+                    style={{ marginBottom: "20px" }}
+                  >
                     <h2>
                       <CheckCircleOutlined />
                       Access Granted
@@ -214,18 +220,22 @@ const Home = () => {
         );
       case "verifying-background":
         return (
-            <div className="step-card">
-                <div className="step-layout">
-                    <div className="progress-column">{renderProgressIndicator()}</div>
-                    <div className="content-column">
-                        <div className="result-success">
-                            <h2><CheckCircleOutlined /> Thank You!</h2>
-                            <p className="step-description">Your verification is being processed.</p>
-                        </div>
-                    </div>
-                    <div className="instructions-column">{renderInstructions()}</div>
+          <div className="step-card">
+            <div className="step-layout">
+              <div className="progress-column">{renderProgressIndicator()}</div>
+              <div className="content-column">
+                <div className="result-success">
+                  <h2>
+                    <CheckCircleOutlined /> Thank You!
+                  </h2>
+                  <p className="step-description">
+                    Your verification is being processed.
+                  </p>
                 </div>
+              </div>
+              <div className="instructions-column">{renderInstructions()}</div>
             </div>
+          </div>
         );
       default:
         return (

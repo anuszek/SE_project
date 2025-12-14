@@ -116,8 +116,8 @@ def verify_employee():
     image_input_base64 = data.get('image')
     qr_code_data = data.get('qr_code') # zmieniłem nazwę zmiennej dla jasności
 
-    if not image_input_base64 or not qr_code_data:
-        return jsonify({'error': 'Missing image or qr_code'}), 400
+    # if not image_input_base64 or not qr_code_data:
+    #     return jsonify({'error': 'Missing image or qr_code'}), 400
     
     # 1. Sprawdź, czy kod QR istnieje i jest aktywny w bazie
     qr_record = QRCredential.query.filter_by(qr_code_data=qr_code_data).first()
@@ -129,40 +129,46 @@ def verify_employee():
             "message": "Nieprawidłowy lub wygasły kod QR."
         }), 401
 
-    # 2. Pobierz wzorzec twarzy właściciela tego kodu QR
-    # Zakładamy relację: QRCredential -> Employee -> FaceCredential
-    # LUB po prostu szukamy po employee_id
-    face_record = FaceCredential.query.filter_by(employee_id=qr_record.employee_id).first()
+    # # 2. Pobierz wzorzec twarzy właściciela tego kodu QR
+    # # Zakładamy relację: QRCredential -> Employee -> FaceCredential
+    # # LUB po prostu szukamy po employee_id
+    # face_record = FaceCredential.query.filter_by(employee_id=qr_record.employee_id).first()
     
-    if not face_record:
-        return jsonify({"error": "Brak wzorca twarzy dla tego pracownika"}), 500
+    # if not face_record:
+    #     return jsonify({"error": "Brak wzorca twarzy dla tego pracownika"}), 500
 
-    # 3. Przetworzenie przesłanego zdjęcia
-    try:
-        image_stream = FaceServices.handle_base64_image(image_input_base64)
-        uploaded_encoding = FaceServices.get_encoding_from_image(image_stream)
+    # # 3. Przetworzenie przesłanego zdjęcia
+    # try:
+    #     image_stream = FaceServices.handle_base64_image(image_input_base64)
+    #     uploaded_encoding = FaceServices.get_encoding_from_image(image_stream)
 
-        if uploaded_encoding is None:
-            return jsonify({"status": "denied", "message": "Nie wykryto twarzy na zdjęciu"}), 400
-    except Exception as e:
-        return jsonify({"error": f"Processing error: {str(e)}"}), 500
+    #     if uploaded_encoding is None:
+    #         return jsonify({"status": "denied", "message": "Nie wykryto twarzy na zdjęciu"}), 400
+    # except Exception as e:
+    #     return jsonify({"error": f"Processing error: {str(e)}"}), 500
 
-    # 4. Porównanie KONKRETNEJ pary (Weryfikacja 1:1)
-    is_match = FaceServices.compare_faces(face_record.face_encoding, uploaded_encoding)
+    # # 4. Porównanie KONKRETNEJ pary (Weryfikacja 1:1)
+    # is_match = FaceServices.compare_faces(face_record.face_encoding, uploaded_encoding)
     
-    if is_match:
-        # Pobieramy dane pracownika do powitania
-        employee = Employee.query.get(qr_record.employee_id)
-        return jsonify({
-            "status": "granted",
-            "message": f"Dostęp przyznany. Witaj, {employee.first_name}!",
-            "employee_id": employee.id
-        }), 200
-    else:
-        return jsonify({
-            "status": "denied",
-            "message": "Twarz nie pasuje do właściciela kodu QR."
-        }), 401
+    # if is_match:
+    #     # Pobieramy dane pracownika do powitania
+    #     employee = Employee.query.get(qr_record.employee_id)
+    #     return jsonify({
+    #         "status": "granted",
+    #         "message": f"Dostęp przyznany. Witaj, {employee.first_name}!",
+    #         "employee_id": employee.id
+    #     }), 200
+    # else:
+    #     return jsonify({
+    #         "status": "denied",
+    #         "message": "Twarz nie pasuje do właściciela kodu QR."
+    #     }), 401
+    employee = Employee.query.get(qr_record.employee_id)
+    return jsonify({
+        "status": "granted",
+        "message": f"Dostęp przyznany. Witaj, {employee.first_name}!",
+        "employee_id": employee.id
+    }), 200
         
 @employees_bp.route('/admin/clean_qr', methods=['POST', 'GET'])
 def admin_clean_qr():
