@@ -9,17 +9,28 @@ const api = axios.create({
   },
 });
 
-export async function verifyEmployee(qrCode){
+export async function verifyQRCode(qrCode) {
   try {
-    const response = await api.post("/verify", { qrCode });
-    console.log("responseee" + response);
-    
+    const response = await api.post("/verify/qr", { qr_code: qrCode });
     return response.data;
   } catch (err) {
     const msg = err?.response?.data?.message || err?.message;
     throw new Error(msg);
   }
-};
+}
+
+export async function verifyFace(employeeId, image) {
+  try {
+    const response = await api.post("/verify/face", {
+      employee_id: employeeId,
+      image: image,
+    });
+    return response.data;
+  } catch (err) {
+    const msg = err?.response?.data?.message || err?.message;
+    throw new Error(msg);
+  }
+}
 
 
 
