@@ -28,6 +28,12 @@ def app():
 
     with app.app_context():
         db.create_all()
+
+        from app.models.employee import Employee
+        from app.models.employee_face import FaceCredential
+        from app.models.qr_code import QRCredential
+        from app.models.access_log import AccessLog
+
         yield app
         db.session.remove()
         db.drop_all()

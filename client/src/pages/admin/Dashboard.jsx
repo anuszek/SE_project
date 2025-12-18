@@ -31,52 +31,41 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Mock data - replace with actual API calls
+      // Pobierz statystyki
+      const statsResponse = await fetch("http://localhost:5000/api/employees/admin/stats");
+      
+      if (!statsResponse.ok) {
+        throw new Error("Failed to fetch stats");
+      }
+      
+      const statsData = await statsResponse.json();
       setStats({
-        totalEmployees: 125,
-        activeEmployees: 118,
-        todayAccess: 87,
-        pendingVerifications: 5,
+        totalEmployees: statsData.total_employees,
+        activeEmployees: statsData.active_employees,
+        todayAccess: statsData.today_access,
+        pendingVerifications: statsData.pending_verifications,
       });
 
-      setRecentActivity([
-        {
-          id: 1,
-          employee: "John Doe",
-          action: "Checked In",
-          time: "10:30 AM",
-          method: "Face Recognition",
-        },
-        {
-          id: 2,
-          employee: "Jane Smith",
-          action: "Checked Out",
-          time: "10:15 AM",
-          method: "QR Code",
-        },
-        {
-          id: 3,
-          employee: "Mike Johnson",
-          action: "Checked In",
-          time: "9:45 AM",
-          method: "Face Recognition",
-        },
-        {
-          id: 4,
-          employee: "Sarah Williams",
-          action: "Checked In",
-          time: "9:30 AM",
-          method: "QR Code",
-        },
-        {
-          id: 5,
-          employee: "Tom Brown",
-          action: "Checked Out",
-          time: "9:15 AM",
-          method: "Face Recognition",
-        },
-      ]);
-
+      // Pobierz access logs
+      try {
+        const logsResponse = await fetch("http://localhost:5000/api/employees/admin/logs?limit=15");
+        if (logsResponse.ok) {
+          const logsData = await logsResponse.json();
+          // Mapuj dane z backendu do formatu widoku
+          const formattedActivity = logsData.logs.map((log) => ({
+            id: log.id,
+            employee: log.employee_name || `Employee ${log.employee_id}`,
+            action: log.status === "granted" ? "Checked In" : "Denied",
+            method: log.verification_method === "face" ? "Face Recognition" : "QR Code",
+            time: new Date(log.timestamp).toLocaleTimeString(),
+          }));
+          setRecentActivity(formattedActivity);
+        }
+      } catch (logsError) {
+        console.warn("Could not fetch access logs:", logsError);
+        setRecentActivity([]);
+      }
+      
       setLoading(false);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);

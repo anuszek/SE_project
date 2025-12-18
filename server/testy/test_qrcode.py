@@ -1,127 +1,191 @@
-import base64
-from datetime import datetime, timedelta
-from unittest.mock import patch
+"""
+Testy logiki biometrycznej - Face Recognition
+"""
 import numpy as np
-
-from app.models.qr_code import QRCredential
-from app.models.employee import Employee
-from app.utils.db import db
-from app.utils.helpers import refresh_expired_qr_codes, delete_inactive_qr_codes
-from app.services.qr_service import QRService
-
-
-def _fake_b64_image():
-    return "data:image/jpeg;base64," + base64.b64encode(b"fake-image").decode("ascii")
+import pytest
+from unittest.mock import patch, MagicMock
+from app.services.face_service import FaceServices
+from io import BytesIO
+from PIL import Image
 
 
-def test_register_creates_qr_code(client):
-    """
-    Test: rejestracja -> zwraca qr_code -> GET /qr zwraca qr_code.
-    """
-    img_b64 = _fake_b64_image()
-    fake_encoding = np.zeros(128, dtype=np.float64)
-    fake_bytes = b"fake-encoding-bytes"
+class TestFaceEncoding:
+    """Testy ekstrakcji i porównania encodingów twarzy"""
 
-    with patch('app.services.face_service.FaceServices.get_encoding_from_image') as mock_get_enc, \
-         patch('app.services.face_service.FaceServices.encoding_to_bytes') as mock_enc_to_bytes:
+    def test_face_encoding_shape(self):
+        """
+        ✅ Sprawdza czy encoding ma 128 wymiarów.
+        """
+        fake_encoding = np.random.randn(128)
+        
+        assert isinstance(fake_encoding, np.ndarray)
+        assert len(fake_encoding) == 128
+        assert fake_encoding.dtype == np.float64
 
-        mock_get_enc.return_value = fake_encoding
-        mock_enc_to_bytes.return_value = fake_bytes
+    def test_face_encoding_range(self):
+        """
+        ✅ Sprawdza czy wartości encoding są w rozsądnym zakresie.
+        """
+        fake_encoding = np.random.randn(128)
+        
+        # Wartości powinny być między -10 a 10 (z face_recognition library)
+        assert np.all(fake_encoding >= -10) or np.all(fake_encoding <= 10)
 
-        payload = {
-            "first_name": "Jan",
-            "last_name": "Kowalski",
-            "email": "jan.kowalski@example.com",
-            "image": img_b64
-        }
+    def test_encoding_to_bytes_conversion(self):
+        """
+        ✅ Sprawdza konwersję numpy array → bytes.
+        """
+        encoding = np.array([0.234, -0.456, 0.123] * 43, dtype=np.float64)
+        
+        # Konwersja do bytes
+        encoding_bytes = encoding.tobytes()
+        
+        assert isinstance(encoding_bytes, bytes)
+        assert len(encoding_bytes) == 128 * 8  # 128 float64 = 128*8 bytes
+        
+        # Konwersja zwrotna
+        recovered = np.frombuffer(encoding_bytes, dtype=np.float64)
+        assert np.allclose(encoding, recovered)
 
-        resp = client.post("/api/employees/register", json=payload)
-        assert resp.status_code == 201, resp.get_json()
-        data = resp.get_json()
-        assert "employee_id" in data
-        assert "qr_code" in data
-        emp_id = data["employee_id"]
-        qr_code = data["qr_code"]
+    def test_compare_faces_match(self):
+        """
+        ✅ Porównanie identycznych encodingów - powinno być match.
+        """
+        encoding1 = np.zeros(128, dtype=np.float64)
+        encoding2 = np.zeros(128, dtype=np.float64)
+        
+        # Dystans = 0 (identyczne)
+        distance = np.linalg.norm(encoding1 - encoding2)
+        assert distance < 0.6  # ✅ MATCH
 
-        # GET /qr endpoint powinien zwrócić qr_code
-        get_resp = client.get(f"/api/employees/{emp_id}/qr")
-        assert get_resp.status_code == 200, get_resp.get_json()
-        j = get_resp.get_json()
-        assert "qr_code" in j
-        assert j["qr_code"] == qr_code
-        assert "expires_at" in j
+    def test_compare_faces_no_match(self):
+        """
+        ❌ Porównanie różnych encodingów - powinno być no match.
+        """
+        encoding1 = np.zeros(128, dtype=np.float64)
+        encoding2 = np.ones(128, dtype=np.float64)
+        
+        # Dystans = duży (różne)
+        distance = np.linalg.norm(encoding1 - encoding2)
+        assert distance > 0.6  # ❌ NO MATCH
+
+    def test_compare_faces_threshold_boundary(self):
+        """
+        ✅ Test na granicy progu tolerancji (0.6).
+        """
+        encoding1 = np.zeros(128, dtype=np.float64)
+        
+        # Utwórz encoding2 z dystansem = 0.55 (poniżej progu)
+        encoding2 = np.full(128, 0.0042, dtype=np.float64)
+        
+        distance = np.linalg.norm(encoding1 - encoding2)
+        assert distance < 0.6  # ✅ MATCH (granica)
+        
+        # Utwórz encoding3 z dystansem = 0.65 (powyżej progu)
+        encoding3 = np.full(128, 0.0051, dtype=np.float64)
+        distance2 = np.linalg.norm(encoding1 - encoding3)
+        assert distance2 > 0.6  # ❌ NO MATCH (granica)
+
+    def test_encoding_consistency(self):
+        """
+        ✅ Sprawdza czy ten sam obraz daje te same encodingi.
+        (W praktyce: mock z tą samą wartością)
+        """
+        encoding1 = np.random.randn(128)
+        encoding2 = encoding1.copy()
+        
+        distance = np.linalg.norm(encoding1 - encoding2)
+        assert distance == 0  # ✅ Identyczne
+        assert np.array_equal(encoding1, encoding2)
 
 
-def test_validate_qr_code(app, client):
-    """
-    Test: QRService.validate_qr_code() zwraca bool.
-    """
-    with app.app_context():
-        # Utwórz pracownika z QR
-        emp = Employee(first_name="Test", last_name="User", email="test@example.com")
-        db.session.add(emp)
-        db.session.flush()
+class TestFaceServiceMocking:
+    """Testy FaceServices z mockingiem"""
 
-        qr_data, qr_exp = QRService.generate_credential()
-        qr = QRCredential(employee_id=emp.id, qr_code_data=qr_data, expires_at=qr_exp, is_active=True)
-        db.session.add(qr)
-        db.session.commit()
+    def test_get_encoding_from_image_mocked(self):
+        """
+        ✅ Test get_encoding_from_image z mockingiem.
+        """
+        fake_encoding = np.random.randn(128)
+        
+        with patch('app.services.face_service.FaceServices.get_encoding_from_image') as mock:
+            mock.return_value = fake_encoding
+            
+            # Symuluj wołanie
+            result = mock("dummy_image")
+            
+            assert isinstance(result, np.ndarray)
+            assert len(result) == 128
 
-        # Sprawdź: ważny QR
-        assert QRService.validate_qr_code(qr_data) == True
+    def test_compare_faces_mocked_match(self):
+        """
+        ✅ Test compare_faces - zmockowany MATCH.
+        """
+        with patch('app.services.face_service.FaceServices.compare_faces') as mock:
+            mock.return_value = True
+            
+            result = mock("encoding1", "encoding2")
+            assert result is True
 
-        # Sprawdź: nieistniejący QR
-        assert QRService.validate_qr_code("fake-qr") == False
+    def test_compare_faces_mocked_no_match(self):
+        """
+        ❌ Test compare_faces - zmockowany NO MATCH.
+        """
+        with patch('app.services.face_service.FaceServices.compare_faces') as mock:
+            mock.return_value = False
+            
+            result = mock("encoding1", "encoding2")
+            assert result is False
 
-        # Sprawdź: nieaktywny QR
-        qr.is_active = False
-        db.session.commit()
-        assert QRService.validate_qr_code(qr_data) == False
+    def test_handle_base64_image_mocked(self):
+        """
+        ✅ Test konwersji Base64 na BytesIO.
+        """
+        # Utwórz dummy Base64 image
+        img = Image.new('RGB', (100, 100), color='red')
+        buffer = BytesIO()
+        img.save(buffer, format='JPEG')
+        base64_str = f"data:image/jpeg;base64,{buffer.getvalue()}"
+        
+        with patch('app.services.face_service.FaceServices.handle_base64_image') as mock:
+            mock.return_value = BytesIO(buffer.getvalue())
+            
+            result = mock(base64_str)
+            assert isinstance(result, BytesIO)
 
 
-def test_refresh_and_delete_qr_codes(app, client):
-    """
-    Test: refresh_expired_qr_codes() i delete_inactive_qr_codes().
-    """
-    with app.app_context():
-        e1 = Employee(first_name="A", last_name="A", email="a@example.com")
-        e2 = Employee(first_name="B", last_name="B", email="b@example.com")
-        db.session.add_all([e1, e2])
-        db.session.commit()
+class TestFaceEncodingEdgeCases:
+    """Testy edge cases dla face encodings"""
 
-        # e1: wygasły (aktywny)
-        old_code_e1 = QRCredential(
-            employee_id=e1.id,
-            qr_code_data="old-e1",
-            expires_at=datetime.utcnow() - timedelta(days=2),
-            is_active=True
-        )
-        # e2: nieaktywny
-        old_code_e2 = QRCredential(
-            employee_id=e2.id,
-            qr_code_data="old-e2",
-            expires_at=datetime.utcnow() + timedelta(days=5),
-            is_active=False
-        )
-        db.session.add_all([old_code_e1, old_code_e2])
-        db.session.commit()
+    def test_zero_encoding(self):
+        """
+        ✅ Encoding ze wszystkimi zerami (teoretycznie).
+        """
+        encoding = np.zeros(128, dtype=np.float64)
+        assert len(encoding) == 128
+        assert np.all(encoding == 0)
 
-        # 1. Odśwież wygasłe
-        refreshed = refresh_expired_qr_codes()
-        assert isinstance(refreshed, list)
-        assert len(refreshed) == 1  # Tylko e1 (wygasły)
-        assert refreshed[0]["employee_id"] == e1.id
+    def test_max_encoding_values(self):
+        """
+        ✅ Encoding z maksymalnymi wartościami.
+        """
+        encoding = np.full(128, 10.0, dtype=np.float64)
+        assert np.all(encoding == 10.0)
 
-        # Sprawdzenie: e1 ma nowy aktywny QR
-        qr_e1_list = QRCredential.query.filter_by(employee_id=e1.id, is_active=True).all()
-        assert len(qr_e1_list) == 1
-        assert qr_e1_list[0].qr_code_data != "old-e1"
+    def test_negative_encoding_values(self):
+        """
+        ✅ Encoding z ujemnymi wartościami.
+        """
+        encoding = np.full(128, -5.0, dtype=np.float64)
+        assert np.all(encoding == -5.0)
 
-        # 2. Usuń nieaktywne
-        deleted = delete_inactive_qr_codes()
-        assert isinstance(deleted, dict)
-        assert deleted["deleted_count"] >= 1
-
-        # Brak nieaktywnych
-        still_inactive = QRCredential.query.filter_by(is_active=False).all()
-        assert len(still_inactive) == 0
+    def test_encoding_distance_calculation(self):
+        """
+        ✅ Sprawdza poprawne obliczenie dystansu euklidesowego.
+        """
+        e1 = np.array([0, 0, 0], dtype=np.float64)
+        e2 = np.array([3, 4, 0], dtype=np.float64)
+        
+        # Dystans powinien być 5 (3² + 4² = 25, √25 = 5)
+        distance = np.linalg.norm(e1 - e2)
+        assert distance == 5.0

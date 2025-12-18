@@ -1,4 +1,6 @@
+from datetime import datetime
 from flask import Blueprint, request, jsonify
+from app.models.access_log import AccessLog
 from sqlalchemy.exc import IntegrityError
 import re
 from app.utils.db import db
@@ -121,7 +123,19 @@ def verify_qr_only():
     # 1. Sprawdź, czy kod QR istnieje i jest aktywny
     qr_record = QRCredential.query.filter_by(qr_code_data=qr_code_data).first()
     
-    if not qr_record or not QRService.validate_qr_code(qr_code_data): 
+    if not qr_record or not QRService.validate_qr_code(qr_code_data):
+        
+        try:
+            log = AccessLog(
+                employee_id = "unknown", 
+                status="denied",
+                verification_method="qr"
+            )
+            db.session.add(log)
+            db.session.commit()
+        except Exception as log_error:
+            print(f"[WARNING] Failed to log access: {log_error}")
+
         return jsonify({
             "status": "denied",
             "message": "Nieprawidłowy lub wygasły kod QR."
@@ -134,6 +148,17 @@ def verify_qr_only():
         return jsonify({"error": "Błąd spójności danych: brak pracownika dla tego kodu"}), 500
 
     # Zwracamy sukces i ID pracownika, żeby frontend wiedział, kogo weryfikować twarzą
+    try:
+        log = AccessLog(
+            employee_id=employee.id,
+            status="granted",
+            verification_method="qr"
+        )
+        db.session.add(log)
+        db.session.commit()
+    except Exception as log_error:
+        print(f"[WARNING] Failed to log access: {log_error}")
+
     return jsonify({
         "status": "valid",
         "message": "Kod QR poprawny. Przejdź do weryfikacji twarzy.",
@@ -179,12 +204,36 @@ def verify_face_only():
     
     if is_match:
         employee = Employee.query.get(employee_id)
+
+        try:
+            log = AccessLog(
+                employee_id=employee_id,
+                status="granted",
+                verification_method="face"
+            )
+            db.session.add(log)
+            db.session.commit()
+        except Exception as log_error:
+            print(f"[WARNING] Failed to log access: {log_error}")
+
         return jsonify({
             "status": "granted",
             "message": f"Dostęp przyznany. Witaj, {employee.first_name}!",
             "employee_id": employee.id
         }), 200
     else:
+
+        try:
+            log = AccessLog(
+                employee_id=employee_id,
+                status="denied",
+                verification_method="face"
+            )
+            db.session.add(log)
+            db.session.commit()
+        except Exception as log_error:
+            print(f"[WARNING] Failed to log access denial: {log_error}")
+
         return jsonify({
             "status": "denied",
             "message": "Weryfikacja biometryczna nieudana. Twarz nie pasuje."
@@ -216,3 +265,117 @@ def get_employee_qr_data(employee_id):
         "qr_code": qr.qr_code_data,
         "expires_at": qr.expires_at.isoformat() if qr.expires_at else None
     }), 200
+
+@employees_bp.route('/access-log/create', methods=['POST'])
+def create_access_log():
+    """Zapisuje log dostępu do bazy danych"""
+    try:
+        data = request.get_json()
+        
+        employee_id = data.get('employee_id')
+        status = data.get('status')  # 'granted' lub 'denied'
+        verification_method = data.get('verification_method')  # 'face' lub 'qr'
+        
+        if not all([employee_id, status, verification_method]):
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        # Stwórz nowy log
+        log = AccessLog(
+            employee_id=employee_id,
+            status=status,
+            verification_method=verification_method
+        )
+        
+        db.session.add(log)
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Access log recorded",
+            "log_id": log.id
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+@employees_bp.route('/admin/logs', methods=['GET'])
+def get_access_logs():
+    """Pobiera wszystkie logi dostępu"""
+    try:
+        limit = request.args.get('limit', default=10, type=int)
+        
+        logs = AccessLog.query.order_by(AccessLog.timestamp.desc()).limit(limit).all()
+        
+        logs_data = []
+        for log in logs:
+            employee = Employee.query.get(log.employee_id) if log.employee_id else None
+            
+            logs_data.append({
+                "id": log.id,
+                "employee_id": log.employee_id,
+                "employee_name": f"{employee.first_name} {employee.last_name}" if employee else "Unknown",
+                "status": log.status,
+                "verification_method": log.verification_method,
+                "timestamp": log.timestamp.isoformat() if log.timestamp else None
+            })
+        
+        return jsonify({
+            "success": True,
+            "logs": logs_data
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+@employees_bp.route('/admin/stats', methods=['GET'])
+def get_admin_stats():
+    """Zwraca statystyki dla dashboardu"""
+    try:
+        from datetime import datetime, timedelta
+        
+        total_employees = Employee.query.count()
+        
+        # Logi z dzisiaj
+        today = datetime.utcnow().date()
+        today_access = AccessLog.query.filter(
+            AccessLog.timestamp >= today
+        ).count()
+        
+        # Dzisiejsze odmowy dostępu
+        today_denied = AccessLog.query.filter(
+            AccessLog.timestamp >= today,
+            AccessLog.status == 'denied'
+        ).count()
+        
+        return jsonify({
+            "success": True,
+            "total_employees": total_employees,
+            "active_employees": total_employees,
+            "today_access": today_access,
+            "today_denied": today_denied,
+            "pending_verifications": 0
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@employees_bp.route('/<int:employee_id>', methods=['DELETE'])
+def delete_employee(employee_id):
+    """Usuwa pracownika i jego dane biometryczne"""
+    employee = Employee.query.get(employee_id)
+    if not employee:
+        return jsonify({"error": "Employee not found"}), 404
+    
+    db.session.delete(employee)
+    db.session.commit()
+    return jsonify({"message": "Employee deleted"}), 200
+
+@employees_bp.route('/', methods=['GET'])
+def get_all_employees():
+    """Pobiera listę wszystkich pracowników"""
+    employees = Employee.query.all()
+    return jsonify([{
+        "id": emp.id,
+        "first_name": emp.first_name,
+        "last_name": emp.last_name,
+        "email": emp.email,
+        "created_at": emp.created_at
+    } for emp in employees]), 200

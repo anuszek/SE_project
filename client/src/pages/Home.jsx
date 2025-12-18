@@ -49,9 +49,9 @@ const Home = () => {
     }
   };
 
-  const handleVerification = async (qr, face) => {
+  const handleVerification = async (empId, face) => {
     try {
-      const result = await verifyFace(qr, face);
+      const result = await verifyFace(empId, face);
       // You can use this result for logging or minor UI feedback
       setVerificationResult({ success: true, data: result });
       console.log("Background verification success:", result);
