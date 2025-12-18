@@ -75,7 +75,12 @@ def create_app():
     # ----------------------------------------
     # Tu później dodasz rejestrację tras (routes), np.:
     from app.routes.employees import employees_bp
+    from app.routes.auth import auth_bp
+    from app.routes.admin import admin_bp
+    
     app.register_blueprint(employees_bp, url_prefix="/api/employees")
+    app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    app.register_blueprint(admin_bp, url_prefix="/api/admin")
 
     # ----------------------------------------
     # SCHEDULER

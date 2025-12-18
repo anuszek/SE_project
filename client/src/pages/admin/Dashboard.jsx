@@ -12,6 +12,7 @@ import {
 } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { getAccessLogs, getEmployeeStats } from "../../api/admin";
 import "./Dashboard.css";
 
 const Dashboard = () => {
@@ -30,47 +31,29 @@ const Dashboard = () => {
   }, []);
 
   const fetchDashboardData = async () => {
-    try {
-      // Pobierz statystyki
-      const statsResponse = await fetch("http://localhost:5000/api/employees/admin/stats");
-      
-      if (!statsResponse.ok) {
-        throw new Error("Failed to fetch stats");
-      }
-      
-      const statsData = await statsResponse.json();
-      setStats({
-        totalEmployees: statsData.total_employees,
-        activeEmployees: statsData.active_employees,
-        todayAccess: statsData.today_access,
-        pendingVerifications: statsData.pending_verifications,
-      });
+    const statsData = await getEmployeeStats();
 
-      // Pobierz access logs
-      try {
-        const logsResponse = await fetch("http://localhost:5000/api/employees/admin/logs?limit=15");
-        if (logsResponse.ok) {
-          const logsData = await logsResponse.json();
-          // Mapuj dane z backendu do formatu widoku
-          const formattedActivity = logsData.logs.map((log) => ({
-            id: log.id,
-            employee: log.employee_name || `Employee ${log.employee_id}`,
-            action: log.status === "granted" ? "Checked In" : "Denied",
-            method: log.verification_method === "face" ? "Face Recognition" : "QR Code",
-            time: new Date(log.timestamp).toLocaleTimeString(),
-          }));
-          setRecentActivity(formattedActivity);
-        }
-      } catch (logsError) {
-        console.warn("Could not fetch access logs:", logsError);
-        setRecentActivity([]);
-      }
-      
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-      setLoading(false);
-    }
+    setStats({
+      totalEmployees: statsData.total_employees,
+      activeEmployees: statsData.active_employees,
+      todayAccess: statsData.today_access,
+      pendingVerifications: statsData.pending_verifications,
+    });
+
+    const logsData = await getAccessLogs(10);
+
+    setRecentActivity(
+      logsData.map((log) => ({
+        id: log.id,
+        employee: log.employee_name || `Employee ${log.employee_id}`,
+        action: log.status === "granted" ? "Checked In" : "Denied",
+        method:
+          log.verification_method === "face" ? "Face Recognition" : "QR Code",
+        time: new Date(log.timestamp).toLocaleTimeString(),
+      }))
+    );
+    
+    setLoading(false);
   };
 
   if (loading) {
@@ -147,7 +130,10 @@ const Dashboard = () => {
       <div className="quick-actions">
         <h2>Quick Actions</h2>
         <div className="actions-grid">
-          <Link to="/admin/add-employee" className="action-button action-primary">
+          <Link
+            to="/admin/add-employee"
+            className="action-button action-primary"
+          >
             <PersonAddAltOutlined />
             <span>Add Employee</span>
           </Link>

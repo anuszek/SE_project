@@ -2,25 +2,27 @@ import { Scanner } from "@yudiel/react-qr-scanner";
 import React, { useState } from "react";
 import "./QRReader.css";
 
-const QRReader = ({ onScan }) => {
+const QRReader = ({ onScan, paused }) => {
   const [scannedResult, setScannedResult] = useState(null);
 
   return (
     <div className="qr-reader-container">
       {/* The Scanner component */}
       <Scanner
+        paused={paused}
         onScan={(result) => {
+          if (paused) return;
           if (result && result.length > 0) {
             const rawValue = result[0].rawValue;
+            if (rawValue === scannedResult) return;
             setScannedResult(rawValue);
-            // Call the onScan callback to progress to the next step
+
             if (onScan) {
               onScan(rawValue);
             }
           }
         }}
         onError={(error) => console.log(error)}
-        // ADD THIS PROP 👇
         constraints={{
           facingMode: "environment",
           width: { min: 100 }, // Ask for a very low minimum
@@ -28,13 +30,6 @@ const QRReader = ({ onScan }) => {
         }}
         formats={["qr_code"]}
       />
-
-      {/* Display result */}
-      {scannedResult && (
-        <div className="qr-reader-result">
-          <strong>Scanned Value:</strong> {scannedResult}
-        </div>
-      )}
     </div>
   );
 };

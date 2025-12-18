@@ -6,40 +6,40 @@ import {
 } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { verifyFace, verifyQRCode } from "../api/auth";
 import FaceCapture from "../components/FaceCapture";
 import QRReader from "../components/QRReader";
 import "./Home.css";
-import { verifyQRCode, verifyFace } from "../api/verify";
 
 const Home = () => {
   const [step, setStep] = useState("qr"); // 'qr', 'face', 'verifying-background', 'result'
+  const [isPaused, setIsPaused] = useState(false);
   const [qrData, setQrData] = useState(null);
   const [employeeId, setEmployeeId] = useState(null);
   const [faceImage, setFaceImage] = useState(null);
   const [verificationResult, setVerificationResult] = useState(null);
   const [accessGranted, setAccessGranted] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
 
- const handleQrScan = async (data) => {
+  const handleQrScan = async (data) => {
+    if (isPaused) return;
+
+    setIsPaused(true);
+    console.log("Processing:", data);
+
     try {
-      setIsVerifying(true);
       const result = await verifyQRCode(data);
       setQrData(data);
       setEmployeeId(result.employee_id);
       setAccessGranted(true);
       setStep("face");
     } catch (error) {
-      setVerificationResult({
-        success: false,
-        error: error.message || "Nieprawidłowy kod QR",
-      });
-      console.error("QR verification error:", error);
-      setTimeout(reset, 3000);
-    } finally {
-      setIsVerifying(false);
+      console.error("Verification failed:", error);
+
+      setTimeout(() => {
+        setIsPaused(false);
+      }, 2000);
     }
   };
-
 
   const handleFaceCapture = (image) => {
     if (image) {
@@ -194,7 +194,7 @@ const Home = () => {
               <div className="progress-column">{renderProgressIndicator()}</div>
               <div className="content-column">
                 <div className="verification-container">
-                  <QRReader onScan={handleQrScan} />
+                  <QRReader onScan={handleQrScan} paused={isPaused} />
                 </div>
                 <p className="step-description">
                   Scan your QR code to begin the verification process
