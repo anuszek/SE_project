@@ -16,46 +16,13 @@ admin_bp = Blueprint('admin', __name__)
 @admin_bp.route('/clean_qr', methods=['POST', 'GET'])
 def admin_clean_qr():
     """
-    Wywołanie: usuń nieaktywne i odśwież wygasłe. Zabezpiecz w produkcji (token/IP).
+    Wywołanie: usuń nieaktywne i odśwież wygasłe.
     """
 
     # opcjonalnie: najpierw usuń nieaktywne, potem odśwież wygasłe
     deleted = delete_inactive_qr_codes()
     refreshed = refresh_expired_qr_codes()
     return {"deleted": deleted, "refreshed": refreshed}, 200
-
-@admin_bp.route('/access-log/create', methods=['POST'])
-def create_access_log():
-    """Zapisuje log dostępu do bazy danych"""
-    try:
-        data = request.get_json()
-        
-        employee_id = data.get('employee_id')
-        status = data.get('status')  # 'granted' lub 'denied'
-        verification_method = data.get('verification_method')  # 'face' lub 'qr'
-        
-        if not all([employee_id, status, verification_method]):
-            return jsonify({"error": "Missing required fields"}), 400
-        
-        # Stwórz nowy log
-        log = AccessLog(
-            employee_id=employee_id,
-            status=status,
-            verification_method=verification_method
-        )
-        
-        db.session.add(log)
-        db.session.commit()
-        
-        return jsonify({
-            "success": True,
-            "message": "Access log recorded",
-            "log_id": log.id
-        }), 201
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
 
 @admin_bp.route('/logs', methods=['GET'])
 def get_access_logs():
