@@ -1,6 +1,7 @@
 import {
   CheckCircleOutlined,
   CheckOutlined,
+  Close,
   DoDisturbOnOutlined,
   LockOutlined,
 } from "@mui/icons-material";
@@ -19,12 +20,22 @@ const Home = () => {
   const [faceImage, setFaceImage] = useState(null);
   const [verificationResult, setVerificationResult] = useState(null);
   const [accessGranted, setAccessGranted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    if (errorMessage) {
+      const timer = setTimeout(() => {
+        setErrorMessage("");
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [errorMessage]);
 
   const handleQrScan = async (data) => {
     if (isPaused) return;
 
     setIsPaused(true);
-    console.log("Processing:", data);
+    setErrorMessage("");
 
     try {
       const result = await verifyQRCode(data);
@@ -33,8 +44,7 @@ const Home = () => {
       setAccessGranted(true);
       setStep("face");
     } catch (error) {
-      console.error("Verification failed:", error);
-
+      setErrorMessage(error.message || "QR Code verification failed");
       setTimeout(() => {
         setIsPaused(false);
       }, 2000);
@@ -271,6 +281,19 @@ const Home = () => {
           Admin Portal
         </Link>
       </div>
+      {errorMessage && (
+        <div className="message-container error-message">
+          {errorMessage}
+          <button
+            type="button"
+            className="error-close-btn"
+            onClick={() => setErrorMessage("")}
+            aria-label="Close error message"
+          >
+            <Close fontSize="small" />
+          </button>
+        </div>
+      )}
       <div className="home-content">{renderStep()}</div>
     </div>
   );

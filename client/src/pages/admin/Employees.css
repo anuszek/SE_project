@@ -1,7 +1,22 @@
-
 .employees-container {
+  padding: var(--padding-2xl);
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+.employees-header {
   display: flex;
-  justify-content: center;
   align-items: center;
-  height: 80vh;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--padding-2xl);
+  background-color: var(--color-container-background);
+  padding: var(--padding-xl);
+  border-radius: var(--radius-2xl);
+}
+
+.employees-list{
+  display: grid;
+  /* grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); */
+  gap: var(--spacing-lg);
 }

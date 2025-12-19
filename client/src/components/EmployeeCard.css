@@ -1,0 +1,36 @@
+.employee-card {
+  background-color: var(--color-container-background);
+  border-radius: var(--radius-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.details {
+  display: flex;
+  flex-direction: column;
+}
+
+.details > ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.profile-picture {
+  width: 200px;
+  height: 200px;
+  background-color: aqua;
+  object-fit: cover;
+}

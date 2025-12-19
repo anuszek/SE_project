@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import "./Employees.css";
 import { ArrowBack } from "@mui/icons-material";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import EmployeeCard from "../../components/EmpoyeeCard.jsx";
+import "./Employees.css";
 
 const Employees = () => {
   const navigate = useNavigate();
@@ -28,29 +29,19 @@ const Employees = () => {
 
   return (
     <div className="employees-container">
-      <div style={{ marginBottom: "2rem" }}>
-        <button 
-          onClick={() => navigate("/admin/dashboard")}
-          style={{ marginRight: "1rem" }}
-        >
-          ← Back
-        </button>
-        <h1>Employees List</h1>
+      <div className="employees-header">
+        <div className="button" onClick={() => navigate("/admin/dashboard")}>
+          <ArrowBack />
+        </div>
+        <div>
+          <h1>Manage your employees</h1>
+          <p className="subtitle">you can delete, modify or dance on the barrows of your employees, oh Lord of Metinna, Ebbing, Gemmera and Sovereign of Nazair and Vicovaro</p>
+        </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
+      <div className="employees-list">
         {employees.map((emp) => (
-          <div key={emp.id} style={{ 
-            background: "white", 
-            padding: "1.5rem", 
-            borderRadius: "8px",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
-          }}>
-            <h3>{emp.first_name} {emp.last_name}</h3>
-            <p><strong>Email:</strong> {emp.email}</p>
-            <p><strong>ID:</strong> {emp.id}</p>
-            <p><strong>Added:</strong> {new Date(emp.created_at).toLocaleDateString()}</p>
-          </div>
+          <EmployeeCard key={emp.id} employee={emp} />
         ))}
       </div>
 

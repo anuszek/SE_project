@@ -119,22 +119,6 @@ def delete_employee(employee_id):
     db.session.commit()
     return jsonify({"message": "Employee deleted"}), 200
 
-@employees_bp.route('/<int:employee_id>/qr', methods=['GET'])
-def get_employee_qr_data(employee_id):
-    """Zwraca QR code dla pracownika"""
-    employee = Employee.query.get(employee_id)
-    if not employee:
-        return jsonify({"error": "Employee not found"}), 404
-
-    qr = QRCredential.query.filter_by(employee_id=employee_id, is_active=True).first()
-    if not qr:
-        return jsonify({"error": "No active QR code"}), 404
-
-    return jsonify({
-        "qr_code": qr.qr_code_data,
-        "expires_at": qr.expires_at.isoformat() if qr.expires_at else None
-    }), 200
-
 @employees_bp.route('/all', methods=['GET'])
 def get_all_employees():
     """Pobiera listę wszystkich pracowników"""
@@ -145,4 +129,6 @@ def get_all_employees():
         "last_name": emp.last_name,
         "email": emp.email,
         "created_at": emp.created_at
+        "qr_code": emp.qr_credential.qr_code_data if emp.qr_credential else None
+        "expires_at": emp.qr_credential.expires_at if emp.qr_credential else None
     } for emp in employees]), 200
