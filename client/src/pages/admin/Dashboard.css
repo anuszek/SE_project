@@ -97,7 +97,7 @@
 }
 
 .stat-card-warning .stat-icon {
-  background: var(--gradient-warning);
+  background: var(--color-error);
 }
 
 .stat-content h3 {

@@ -147,7 +147,10 @@ code {
 }
 
 h1 {
-  font-weight: var(--font-normal);
+  font-size: var(--font-2xl);
+  color: var(--color-text-main);
+  margin: 0;
+  font-weight: var(--font-semibold);
 }
 
 h2 {

@@ -4,6 +4,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: var(--padding-md);
+  width: 60%;
 }
 
 .header {
@@ -26,11 +28,4 @@
   list-style: none;
   padding: 0;
   margin: 0;
-}
-
-.profile-picture {
-  width: 200px;
-  height: 200px;
-  background-color: aqua;
-  object-fit: cover;
 }

@@ -9,6 +9,7 @@ import {
   PersonAddAltOutlined,
   QrCodeOutlined,
   SyncOutlined,
+  LocalPolice,
 } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -31,29 +32,36 @@ const Dashboard = () => {
   }, []);
 
   const fetchDashboardData = async () => {
-    const statsData = await getEmployeeStats();
+    try {
+      const statsData = await getEmployeeStats();
 
-    setStats({
-      totalEmployees: statsData.total_employees,
-      activeEmployees: statsData.active_employees,
-      todayAccess: statsData.today_access,
-      pendingVerifications: statsData.pending_verifications,
-    });
+      const newStats = {
+        totalEmployees: statsData.total_employees,
+        activeEmployees: statsData.active_employees,
+        todayAccess: statsData.today_access,
+        pendingVerifications: statsData.pending_verifications,
+      };
 
-    const logsData = await getAccessLogs(10);
+      setStats(newStats);
 
-    setRecentActivity(
-      logsData.map((log) => ({
-        id: log.id,
-        employee: log.employee_name || `Employee ${log.employee_id}`,
-        action: log.status === "granted" ? "Checked In" : "Denied",
-        method:
-          log.verification_method === "face" ? "Face Recognition" : "QR Code",
-        time: new Date(log.timestamp).toLocaleTimeString(),
-      }))
-    );
-    
-    setLoading(false);
+      const logsData = await getAccessLogs(newStats.todayAccess);
+
+      setRecentActivity(
+        logsData.map((log) => ({
+          id: log.id,
+          employee: log.employee_name || `Employee ${log.employee_id}`,
+          action: log.status === "granted" ? "Checked In" : "Denied",
+          method:
+            log.verification_method === "face" ? "Face Recognition" : "QR Code",
+          time: new Date(log.timestamp).toLocaleTimeString(),
+        }))
+      );
+
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -117,11 +125,11 @@ const Dashboard = () => {
 
         <div className="stat-card stat-card-warning">
           <div className="stat-icon">
-            <BrowseGalleryOutlined />
+            <LocalPolice />
           </div>
           <div className="stat-content">
             <h3>{stats.pendingVerifications}</h3>
-            <p>Pending Verifications</p>
+            <p>Incorrect Entries</p>
           </div>
         </div>
       </div>

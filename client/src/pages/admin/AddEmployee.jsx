@@ -243,7 +243,7 @@ const AddEmployee = () => {
               <div
                 type="button"
                 className="button"
-                onClick={() => navigate("/admin/employees")}
+                onClick={() => navigate("/admin/dashboard")}
                 disabled={loading}
               >
                 Cancel
