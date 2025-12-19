@@ -18,6 +18,7 @@ const EmployeeCard = ({ employee }) => {
           <li>ID: {employee.id}</li>
           <li>Email: {employee.email}</li>
           <li>Added: {new Date(employee.created_at).toLocaleDateString()}</li>
+          <li>Expires: {new Date(employee.expires_at).toLocaleDateString()}</li>
         </ul>
       </div>
       <QRCode value={employee.qr_code_data} size={150} />

@@ -2,7 +2,7 @@
 
 :root {
   /* Colors - Background */
-  --color-background-dark: #2E3133;
+  --color-background-dark: #2e3133;
   --color-container-background: #f5f7fa;
   --color-background-hover: #f7fafc;
 
@@ -13,11 +13,11 @@
   --color-text-dark: #4a5568;
 
   /* Colors - Primary Brand */
-  --color-primary: #484A6E;
+  --color-primary: #484a6e;
   --color-primary-dark: #5a67d8;
   --color-primary-darker: #6b46c1;
   --color-primary-darkest: #553c9a;
-  --color-secondary: #6E708F;
+  --color-secondary: #6e708f;
 
   /* Colors - Status */
   --color-success: #48bb78;
@@ -101,14 +101,14 @@
   --icon-2xl: 60px;
 
   /* Gradients */
-  --gradient-primary: linear-gradient(135deg, #6E708F 0%, #484A6E 100%);
-  --gradient-secondary: linear-gradient(135deg, #484A6E 0%, #2E3133 100%);
+  --gradient-primary: linear-gradient(135deg, #6e708f 0%, #484a6e 100%);
+  --gradient-secondary: linear-gradient(135deg, #484a6e 0%, #2e3133 100%);
   --gradient-success: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
   --gradient-info: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
   --gradient-warning: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
 }
 
-*{
+* {
   font-family: "Science Gothic", sans-serif;
 }
 
@@ -159,6 +159,7 @@ h2 {
 h3 {
   font-weight: var(--font-medium);
   color: var(--color-text-main);
+  margin-top: 0;
 }
 
 p {

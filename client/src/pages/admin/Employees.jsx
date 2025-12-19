@@ -17,7 +17,14 @@ const Employees = () => {
     try {
       const response = await fetch("http://localhost:5000/api/employees/all");
       const data = await response.json();
-      setEmployees(data);
+      console.log(data);
+
+      setEmployees(
+        data.map((emp) => ({
+          ...emp,
+          qr_code_data: emp.qr_code,
+        }))
+      );
     } catch (error) {
       console.error("Error fetching employees:", error);
     } finally {
@@ -35,7 +42,11 @@ const Employees = () => {
         </div>
         <div>
           <h1>Manage your employees</h1>
-          <p className="subtitle">you can delete, modify or dance on the barrows of your employees, oh Lord of Metinna, Ebbing, Gemmera and Sovereign of Nazair and Vicovaro</p>
+          <p className="subtitle">
+            you can delete, modify or dance on the barrows of your employees, oh
+            Lord of Metinna, Ebbing, Gemmera and Sovereign of Nazair and
+            Vicovaro
+          </p>
         </div>
       </div>
 

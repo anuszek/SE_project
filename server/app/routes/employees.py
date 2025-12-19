@@ -130,5 +130,6 @@ def get_all_employees():
         "email": emp.email,
         "created_at": emp.created_at,
         "qr_code": emp.qr_code.qr_code_data if emp.qr_code else None,
-        "expires_at": emp.qr_code.expires_at if emp.qr_code else None
+        "expires_at": emp.qr_code.expires_at if emp.qr_code else None,
+        "face_image": emp.employee_face.face_encoding if emp.employee_face else None
     } for emp in employees]), 200
