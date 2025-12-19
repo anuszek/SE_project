@@ -6,49 +6,63 @@ import {
 } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { verifyEmployee } from "../api/verify";
+import { verifyFace, verifyQRCode } from "../api/auth";
 import FaceCapture from "../components/FaceCapture";
 import QRReader from "../components/QRReader";
 import "./Home.css";
 
 const Home = () => {
   const [step, setStep] = useState("qr"); // 'qr', 'face', 'verifying-background', 'result'
+  const [isPaused, setIsPaused] = useState(false);
   const [qrData, setQrData] = useState(null);
+  const [employeeId, setEmployeeId] = useState(null);
   const [faceImage, setFaceImage] = useState(null);
   const [verificationResult, setVerificationResult] = useState(null);
   const [accessGranted, setAccessGranted] = useState(false);
 
-  const handleQrScan = (data) => {    
-    console.log(verifyEmployee(data));
-    // if (verifyEmployee(data) == "granted") {
-    //     setQrData(data);
-    //     setAccessGranted(true);
-    //     setStep("face");
-    //   }
+  const handleQrScan = async (data) => {
+    if (isPaused) return;
+
+    setIsPaused(true);
+    console.log("Processing:", data);
+
+    try {
+      const result = await verifyQRCode(data);
+      setQrData(data);
+      setEmployeeId(result.employee_id);
+      setAccessGranted(true);
+      setStep("face");
+    } catch (error) {
+      console.error("Verification failed:", error);
+
+      setTimeout(() => {
+        setIsPaused(false);
+      }, 2000);
+    }
   };
 
   const handleFaceCapture = (image) => {
     if (image) {
       setFaceImage(image);
       setStep("verifying-background");
-      handleVerification(qrData, image);
-      // Reset for the next user after a short delay
-      setTimeout(() => reset(), 2000);
+      handleVerification(employeeId, image);
     }
   };
 
-  const handleVerification = async (qr, face) => {
+  const handleVerification = async (empId, face) => {
     try {
-      const result = await verify(qr, face);
+      const result = await verifyFace(empId, face);
       // You can use this result for logging or minor UI feedback
       setVerificationResult({ success: true, data: result });
       console.log("Background verification success:", result);
+      setTimeout(() => reset(), 2000);
     } catch (error) {
       setVerificationResult({
         success: false,
         error: error.message || "Verification failed",
       });
       console.error("Background verification error:", error);
+      setTimeout(() => reset(), 3000);
     }
   };
 
@@ -180,7 +194,7 @@ const Home = () => {
               <div className="progress-column">{renderProgressIndicator()}</div>
               <div className="content-column">
                 <div className="verification-container">
-                  <QRReader onScan={handleQrScan} />
+                  <QRReader onScan={handleQrScan} paused={isPaused} />
                 </div>
                 <p className="step-description">
                   Scan your QR code to begin the verification process

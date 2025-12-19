@@ -12,6 +12,7 @@ import {
 } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { getAccessLogs, getEmployeeStats } from "../../api/admin";
 import "./Dashboard.css";
 
 const Dashboard = () => {
@@ -30,58 +31,29 @@ const Dashboard = () => {
   }, []);
 
   const fetchDashboardData = async () => {
-    try {
-      // Mock data - replace with actual API calls
-      setStats({
-        totalEmployees: 125,
-        activeEmployees: 118,
-        todayAccess: 87,
-        pendingVerifications: 5,
-      });
+    const statsData = await getEmployeeStats();
 
-      setRecentActivity([
-        {
-          id: 1,
-          employee: "John Doe",
-          action: "Checked In",
-          time: "10:30 AM",
-          method: "Face Recognition",
-        },
-        {
-          id: 2,
-          employee: "Jane Smith",
-          action: "Checked Out",
-          time: "10:15 AM",
-          method: "QR Code",
-        },
-        {
-          id: 3,
-          employee: "Mike Johnson",
-          action: "Checked In",
-          time: "9:45 AM",
-          method: "Face Recognition",
-        },
-        {
-          id: 4,
-          employee: "Sarah Williams",
-          action: "Checked In",
-          time: "9:30 AM",
-          method: "QR Code",
-        },
-        {
-          id: 5,
-          employee: "Tom Brown",
-          action: "Checked Out",
-          time: "9:15 AM",
-          method: "Face Recognition",
-        },
-      ]);
+    setStats({
+      totalEmployees: statsData.total_employees,
+      activeEmployees: statsData.active_employees,
+      todayAccess: statsData.today_access,
+      pendingVerifications: statsData.pending_verifications,
+    });
 
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-      setLoading(false);
-    }
+    const logsData = await getAccessLogs(10);
+
+    setRecentActivity(
+      logsData.map((log) => ({
+        id: log.id,
+        employee: log.employee_name || `Employee ${log.employee_id}`,
+        action: log.status === "granted" ? "Checked In" : "Denied",
+        method:
+          log.verification_method === "face" ? "Face Recognition" : "QR Code",
+        time: new Date(log.timestamp).toLocaleTimeString(),
+      }))
+    );
+    
+    setLoading(false);
   };
 
   if (loading) {
@@ -158,7 +130,10 @@ const Dashboard = () => {
       <div className="quick-actions">
         <h2>Quick Actions</h2>
         <div className="actions-grid">
-          <Link to="/admin/add-employee" className="action-button action-primary">
+          <Link
+            to="/admin/add-employee"
+            className="action-button action-primary"
+          >
             <PersonAddAltOutlined />
             <span>Add Employee</span>
           </Link>

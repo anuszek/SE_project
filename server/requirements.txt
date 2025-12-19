@@ -1,7 +1,8 @@
 Flask==3.0.2
 Flask_SQLAlchemy==3.1.1
-SQLAlchemy==2.0.25
+SQLAlchemy==2.0.45
 Flask-Migrate
+Flask-CORS
 
 # Ważne dla Python 3.12+ (naprawia błędy importu w starszych bibliotekach)
 setuptools

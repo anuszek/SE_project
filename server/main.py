@@ -3,10 +3,12 @@ warnings.filterwarnings("ignore", category=UserWarning, module='face_recognition
 import os
 import atexit
 from flask import Flask
+from flask_cors import CORS
 from flask_migrate import Migrate
 from apscheduler.schedulers.background import BackgroundScheduler
 from app.utils.helpers import delete_inactive_qr_codes, refresh_expired_qr_codes
 from app.utils.db import db
+
 
 # GLOBAL migrate object
 migrate = Migrate()
@@ -21,6 +23,14 @@ def create_app():
     # Flask app with instance folder
     # ------------------------------
     app = Flask(__name__, instance_relative_config=True)
+
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": ["http://localhost:5173", "http://localhost:3000"],
+            "methods": ["GET", "POST", "PUT", "DELETE"],
+            "allow_headers": ["Content-Type"]
+        }
+    })
 
     # Ensure instance/ folder exists
     os.makedirs(app.instance_path, exist_ok=True)
@@ -48,7 +58,8 @@ def create_app():
         from app.models.employee import Employee
         from app.models.employee_face import FaceCredential
         from app.models.qr_code import QRCredential  # Pamiętaj, klasa nazywa się QRCredential
-
+        from app.models.access_log import AccessLog
+        
         # 2. TWORZENIE TABEL
         # SQLAlchemy przeskanuje zaimportowane modele i utworzy brakujące tabele
         db.create_all()
@@ -64,7 +75,12 @@ def create_app():
     # ----------------------------------------
     # Tu później dodasz rejestrację tras (routes), np.:
     from app.routes.employees import employees_bp
+    from app.routes.auth import auth_bp
+    from app.routes.admin import admin_bp
+    
     app.register_blueprint(employees_bp, url_prefix="/api/employees")
+    app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    app.register_blueprint(admin_bp, url_prefix="/api/admin")
 
     # ----------------------------------------
     # SCHEDULER

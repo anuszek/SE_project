@@ -1,4 +1,6 @@
+from datetime import datetime
 from flask import Blueprint, request, jsonify
+from app.models.access_log import AccessLog
 from sqlalchemy.exc import IntegrityError
 import re
 from app.utils.db import db
@@ -106,80 +108,16 @@ def register_employee():
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-
-@employees_bp.route('/verify', methods=['POST'])
-def verify_employee():
-    if not request.is_json:
-        return jsonify({"error": "Wymagany format JSON"}), 400
+@employees_bp.route('/<int:employee_id>/delete', methods=['DELETE'])
+def delete_employee(employee_id):
+    """Usuwa pracownika i jego dane biometryczne"""
+    employee = Employee.query.get(employee_id)
+    if not employee:
+        return jsonify({"error": "Employee not found"}), 404
     
-    data = request.get_json()
-    image_input_base64 = data.get('image')
-    qr_code_data = data.get('qr_code') # zmieniłem nazwę zmiennej dla jasności
-
-    # if not image_input_base64 or not qr_code_data:
-    #     return jsonify({'error': 'Missing image or qr_code'}), 400
-    
-    # 1. Sprawdź, czy kod QR istnieje i jest aktywny w bazie
-    qr_record = QRCredential.query.filter_by(qr_code_data=qr_code_data).first()
-    
-    # Sprawdzanie ważności (zakładam, że QRService robi też check daty, ale tu sprawdzamy czy istnieje rekord)
-    if not qr_record or not QRService.validate_qr_code(qr_code_data): 
-        return jsonify({
-            "status": "denied",
-            "message": "Nieprawidłowy lub wygasły kod QR."
-        }), 401
-
-    # # 2. Pobierz wzorzec twarzy właściciela tego kodu QR
-    # # Zakładamy relację: QRCredential -> Employee -> FaceCredential
-    # # LUB po prostu szukamy po employee_id
-    # face_record = FaceCredential.query.filter_by(employee_id=qr_record.employee_id).first()
-    
-    # if not face_record:
-    #     return jsonify({"error": "Brak wzorca twarzy dla tego pracownika"}), 500
-
-    # # 3. Przetworzenie przesłanego zdjęcia
-    # try:
-    #     image_stream = FaceServices.handle_base64_image(image_input_base64)
-    #     uploaded_encoding = FaceServices.get_encoding_from_image(image_stream)
-
-    #     if uploaded_encoding is None:
-    #         return jsonify({"status": "denied", "message": "Nie wykryto twarzy na zdjęciu"}), 400
-    # except Exception as e:
-    #     return jsonify({"error": f"Processing error: {str(e)}"}), 500
-
-    # # 4. Porównanie KONKRETNEJ pary (Weryfikacja 1:1)
-    # is_match = FaceServices.compare_faces(face_record.face_encoding, uploaded_encoding)
-    
-    # if is_match:
-    #     # Pobieramy dane pracownika do powitania
-    #     employee = Employee.query.get(qr_record.employee_id)
-    #     return jsonify({
-    #         "status": "granted",
-    #         "message": f"Dostęp przyznany. Witaj, {employee.first_name}!",
-    #         "employee_id": employee.id
-    #     }), 200
-    # else:
-    #     return jsonify({
-    #         "status": "denied",
-    #         "message": "Twarz nie pasuje do właściciela kodu QR."
-    #     }), 401
-    employee = Employee.query.get(qr_record.employee_id)
-    return jsonify({
-        "status": "granted",
-        "message": f"Dostęp przyznany. Witaj, {employee.first_name}!",
-        "employee_id": employee.id
-    }), 200
-        
-@employees_bp.route('/admin/clean_qr', methods=['POST', 'GET'])
-def admin_clean_qr():
-    """
-    Wywołanie: usuń nieaktywne i odśwież wygasłe. Zabezpiecz w produkcji (token/IP).
-    """
-
-    # opcjonalnie: najpierw usuń nieaktywne, potem odśwież wygasłe
-    deleted = delete_inactive_qr_codes()
-    refreshed = refresh_expired_qr_codes()
-    return {"deleted": deleted, "refreshed": refreshed}, 200
+    db.session.delete(employee)
+    db.session.commit()
+    return jsonify({"message": "Employee deleted"}), 200
 
 @employees_bp.route('/<int:employee_id>/qr', methods=['GET'])
 def get_employee_qr_data(employee_id):
@@ -196,3 +134,15 @@ def get_employee_qr_data(employee_id):
         "qr_code": qr.qr_code_data,
         "expires_at": qr.expires_at.isoformat() if qr.expires_at else None
     }), 200
+
+@employees_bp.route('/all', methods=['GET'])
+def get_all_employees():
+    """Pobiera listę wszystkich pracowników"""
+    employees = Employee.query.all()
+    return jsonify([{
+        "id": emp.id,
+        "first_name": emp.first_name,
+        "last_name": emp.last_name,
+        "email": emp.email,
+        "created_at": emp.created_at
+    } for emp in employees]), 200

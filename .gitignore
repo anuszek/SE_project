@@ -51,3 +51,6 @@ coverage.xml
 
 # Others
 *.pyc
+
+# test jpg
+faces_test
