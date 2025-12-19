@@ -128,7 +128,7 @@ def get_all_employees():
         "first_name": emp.first_name,
         "last_name": emp.last_name,
         "email": emp.email,
-        "created_at": emp.created_at
-        "qr_code": emp.qr_credential.qr_code_data if emp.qr_credential else None
+        "created_at": emp.created_at,
+        "qr_code": emp.qr_credential.qr_code_data if emp.qr_credential else None,
         "expires_at": emp.qr_credential.expires_at if emp.qr_credential else None
     } for emp in employees]), 200
