@@ -13,17 +13,6 @@ from app.utils.helpers import delete_inactive_qr_codes, get_next_available_id, r
 
 admin_bp = Blueprint('admin', __name__)
 
-@admin_bp.route('/clean_qr', methods=['POST', 'GET'])
-def admin_clean_qr():
-    """
-    Wywołanie: usuń nieaktywne i odśwież wygasłe.
-    """
-
-    # opcjonalnie: najpierw usuń nieaktywne, potem odśwież wygasłe
-    deleted = delete_inactive_qr_codes()
-    refreshed = refresh_expired_qr_codes()
-    return {"deleted": deleted, "refreshed": refreshed}, 200
-
 @admin_bp.route('/logs', methods=['GET'])
 def get_access_logs():
     """Pobiera wszystkie logi dostępu"""
