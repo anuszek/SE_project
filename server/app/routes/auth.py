@@ -9,7 +9,6 @@ from app.models.employee_face import FaceCredential
 from app.models.qr_code import QRCredential
 from app.services.face_service import FaceServices
 from app.services.qr_service import QRService
-from app.utils.helpers import delete_inactive_qr_codes, get_next_available_id, refresh_expired_qr_codes
 
 auth_bp= Blueprint('auth', __name__)
 
