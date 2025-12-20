@@ -1,129 +1,117 @@
 import pytest
-from datetime import datetime, timedelta
-from app.models.employee import Employee
-from app.models.access_log import AccessLog
-from app.utils.db import db
+from unittest.mock import patch
+import numpy as np
 
-@pytest.fixture
-def setup_admin_data(client):
+def test_full_auth_flow_success(client):
     """
-    Fixture przygotowujący dane testowe dla panelu administratora.
-    Czyści bazę i tworzy testowego pracownika oraz logi.
+    Testuje pełny proces: 
+    1. Rejestracja -> 2. Weryfikacja QR -> 3. Weryfikacja Twarzy
     """
-    with client.application.app_context():
-        # 1. Czyszczenie bazy danych przed każdym testem
-        db.session.query(AccessLog).delete()
-        db.session.query(Employee).delete()
-        db.session.commit()
+    # --- 1. REJESTRACJA ---
+    fake_encoding = np.zeros(128, dtype=np.float64)
+    with patch('app.services.face_service.FaceServices.get_encoding_from_image') as m_enc, \
+         patch('app.services.face_service.FaceServices.encoding_to_bytes') as m_bytes:
+        
+        m_enc.return_value = fake_encoding
+        m_bytes.return_value = b"fake-encoding-bytes"
+        
+        reg_payload = {
+            'first_name': 'Auth', 'last_name': 'User', 
+            'email': 'auth_success@test.com', 'image': 'data:image/jpeg;base64,AAA='
+        }
+        reg_res = client.post('/api/employees/register', json=reg_payload)
+        assert reg_res.status_code == 201
+        qr_code = reg_res.get_json()['qr_code']
 
-        # 2. Tworzenie testowego pracownika
-        emp = Employee(
-            id=10, 
-            first_name="Admin", 
-            last_name="Tester", 
-            email="admin.test@firma.pl"
-        )
+    # --- 2. WERYFIKACJA QR ---
+    with patch('app.services.qr_service.QRService.validate_qr_code') as m_qr_val:
+        m_qr_val.return_value = True
+        
+        qr_res = client.post('/api/auth/qr', json={'qr_code': qr_code})
+        assert qr_res.status_code == 200
+        emp_id = qr_res.get_json()['employee_id']
+
+    # --- 3. WERYFIKACJA TWARZY ---
+    with patch('app.services.face_service.FaceServices.get_encoding_from_image') as m_get, \
+         patch('app.services.face_service.FaceServices.compare_faces') as m_comp:
+        
+        m_get.return_value = fake_encoding
+        m_comp.return_value = True # Twarze pasują
+        
+        face_payload = {
+            'employee_id': emp_id,
+            'image': 'data:image/jpeg;base64,AAA='
+        }
+        final_res = client.post('/api/auth/face', json=face_payload)
+        
+        assert final_res.status_code == 200
+        assert final_res.get_json()['status'] == 'granted'
+
+def test_verify_qr_invalid(client):
+    """Testuje odrzucenie błędnego kodu QR."""
+    response = client.post('/api/auth/qr', json={'qr_code': 'invalid_code_xyz'})
+    assert response.status_code == 401
+    assert "denied" in response.get_json()['status']
+
+def test_verify_face_mismatch(client):
+    """
+    Testuje sytuację, gdy pracownik istnieje, ale biometria nie pasuje.
+    Używamy rejestracji wewnątrz testu, aby mieć poprawne ID.
+    """
+    # 1. NAJPIERW REJESTRUJEMY PRACOWNIKA (żeby uniknąć błędu 404)
+    with patch('app.services.face_service.FaceServices.get_encoding_from_image') as m_enc, \
+         patch('app.services.face_service.FaceServices.encoding_to_bytes') as m_bytes:
+        
+        m_enc.return_value = np.zeros(128)
+        m_bytes.return_value = b"original-face-encoding"
+        
+        reg_resp = client.post('/api/employees/register', json={
+            'first_name': 'Jan', 'last_name': 'Testowy',
+            'email': 'mismatch.test@example.com', 'image': 'data:image/jpeg;base64,AAA='
+        })
+        assert reg_resp.status_code == 201
+        emp_id = reg_resp.get_json()['employee_id'] # Pobieramy RZECZYWISTE ID
+
+    # 2. PRÓBUJEMY WERYFIKACJI DLA TEGO ID, ALE SYMULUJEMY BRAK DOPASOWANIA TWARZY
+    with patch('app.services.face_service.FaceServices.get_encoding_from_image') as m_get, \
+         patch('app.services.face_service.FaceServices.compare_faces') as m_comp:
+        
+        m_get.return_value = np.ones(128) # Inny wektor twarzy
+        m_comp.return_value = False      # SYMULACJA: Twarz nie pasuje!
+        
+        payload = {
+            'employee_id': emp_id, # Używamy ID z kroku 1
+            'image': 'data:image/jpeg;base64,AAA='
+        }
+        response = client.post('/api/auth/face', json=payload)
+
+    # 3. SPRAWDZAMY CZY DOSTALIŚMY 401 (a nie 404)
+    assert response.status_code == 401
+    assert response.get_json()['status'] == 'denied'
+    assert "nie pasuje" in response.get_json()['message']
+
+def test_verify_qr_endpoint_logic(client, app):
+    """Testuje integrację endpointu QR bezpośrednio z bazą danych."""
+    with app.app_context():
+        from app.models.employee import Employee
+        from app.models.qr_code import QRCredential
+        from app.utils.db import db
+        from app.services.qr_service import QRService
+
+        emp = Employee(first_name="Auth", last_name="Test", email="logic@test.pl")
         db.session.add(emp)
         db.session.flush()
 
-        # 3. Przygotowanie dat
-        now = datetime.utcnow()
-        yesterday = now - timedelta(days=1)
-
-        # 4. Tworzenie logów (używając pola 'status' zgodnie z modelem)
-        # Log 1: Dzisiaj, przyznany (face)
-        l1 = AccessLog(
-            employee_id=emp.id,
-            status="granted",
-            verification_method="face",
-            timestamp=now
-        )
-        # Log 2: Dzisiaj, odmowa (qr)
-        l2 = AccessLog(
-            employee_id=emp.id,
-            status="denied",
-            verification_method="qr",
-            timestamp=now
-        )
-        # Log 3: Wczoraj, przyznany (face)
-        l3 = AccessLog(
-            employee_id=emp.id,
-            status="granted",
-            verification_method="face",
-            timestamp=yesterday
-        )
-
-        db.session.add_all([l1, l2, l3])
+        qr_data, qr_exp = QRService.generate_credential()
+        qr = QRCredential(employee_id=emp.id, qr_code_data=qr_data, expires_at=qr_exp, is_active=True)
+        db.session.add(qr)
         db.session.commit()
-        
-        return emp
 
-# --- TESTY LOGÓW ---
+        resp = client.post("/api/auth/qr", json={"qr_code": qr_data})
+        assert resp.status_code == 200
+        assert resp.get_json()["status"] == "valid"
 
-def test_get_access_logs_success(client, setup_admin_data):
-    """Testuje pobieranie ostatnich logów z limitem"""
-    res = client.get('/api/admin/logs?limit=2')
-    assert res.status_code == 200
-    data = res.get_json()
-    assert data['success'] is True
-    assert len(data['logs']) == 2
-    assert data['logs'][0]['employee_name'] == "Admin Tester"
-
-# --- TESTY STATYSTYK ---
-
-def test_get_admin_stats(client, setup_admin_data):
-    """Testuje statystyki dashboardu (liczenie dzisiejszych wejść)"""
-    res = client.get('/api/admin/stats')
-    assert res.status_code == 200
-    data = res.get_json()
-    assert data['total_employees'] == 1
-    assert data['today_access'] == 2  # l1 i l2 są z dzisiaj
-    assert data['today_denied'] == 1  # tylko l2
-
-# --- TESTY RAPORTÓW ---
-
-def test_generate_raport_all(client, setup_admin_data):
-    """Test generowania raportu bez żadnych filtrów"""
-    res = client.post('/api/admin/raport', json={})
-    assert res.status_code == 200
-    assert res.get_json()['count'] == 3
-
-def test_generate_raport_date_filter(client, setup_admin_data):
-    """Test filtrowania raportu po dacie (tylko dzisiejsze zdarzenia)"""
-    today_str = datetime.utcnow().strftime('%Y-%m-%d')
-    payload = {
-        "date_from": today_str,
-        "date_to": today_str
-    }
-    res = client.post('/api/admin/raport', json=payload)
-    assert res.status_code == 200
-    assert res.get_json()['count'] == 2 # l1 i l2
-
-def test_generate_raport_type_denied(client, setup_admin_data):
-    """Test filtrowania raportu po statusie 'denied'"""
-    payload = {"entry_type": "denied"}
-    res = client.post('/api/admin/raport', json=payload)
-    assert res.status_code == 200
-    data = res.get_json()
-    assert data['count'] == 1
-    assert data['data'][0]['status'] == "denied"
-
-def test_generate_raport_employee_filter(client, setup_admin_data):
-    """Test filtrowania raportu dla konkretnego pracownika"""
-    payload = {"employee_id": setup_admin_data.id}
-    res = client.post('/api/admin/raport', json=payload)
-    assert res.status_code == 200
-    assert res.get_json()['count'] == 3
-
-def test_generate_raport_invalid_date(client, setup_admin_data):
-    """Test obsługi błędu przy nieprawidłowym formacie daty"""
-    payload = {"date_from": "31-12-2023"} # Błędny format (powinien być RRRR-MM-DD)
-    res = client.post('/api/admin/raport', json=payload)
-    assert res.status_code == 400
-    assert "Nieprawidłowy format daty" in res.get_json()['error']
-
-def test_generate_raport_not_json(client):
-    """Test obsługi błędu, gdy zapytanie nie jest JSONem"""
-    res = client.post('/api/admin/raport', data="zwykły tekst")
-    assert res.status_code == 400
-    assert "Wymagany format JSON" in res.get_json()['error']
+        qr.is_active = False
+        db.session.commit()
+        resp_inactive = client.post("/api/auth/qr", json={"qr_code": qr_data})
+        assert resp_inactive.status_code == 401
