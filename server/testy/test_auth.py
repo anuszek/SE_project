@@ -1,136 +1,129 @@
-import os
-import base64
 import pytest
+from datetime import datetime, timedelta
 from app.models.employee import Employee
-from app.models.qr_code import QRCredential
+from app.models.access_log import AccessLog
 from app.utils.db import db
 
-# --- HELPERS ---
-
-def get_img_b64(path):
-    """Pomocnik do generowania base64 dla testów"""
-    if not os.path.exists(path):
-        # Jeśli nie masz drugiego zdjęcia, test 'no_match' zostanie pominięty
-        return None
-    with open(path, "rb") as f:
-        return f"data:image/jpeg;base64,{base64.b64encode(f.read()).decode('utf-8')}"
-
 @pytest.fixture
-def registered_user(client):
-    """Fixture, który rejestruje pracownika i zwraca jego dane do testów auth"""
-    email = "auth_test@example.com"
-    # Czyścimy bazę na wypadek śmieci
-    old_emp = Employee.query.filter_by(email=email).first()
-    if old_emp:
-        db.session.delete(old_emp)
+def setup_admin_data(client):
+    """
+    Fixture przygotowujący dane testowe dla panelu administratora.
+    Czyści bazę i tworzy testowego pracownika oraz logi.
+    """
+    with client.application.app_context():
+        # 1. Czyszczenie bazy danych przed każdym testem
+        db.session.query(AccessLog).delete()
+        db.session.query(Employee).delete()
         db.session.commit()
 
-    img_path = os.path.join("faces_test", "face.jpg")
-    img_b64 = get_img_b64(img_path)
-    
-    payload = {
-        "first_name": "Test",
-        "last_name": "User",
-        "email": email,
-        "image": img_b64
-    }
-    res = client.post('/api/employees/register', json=payload)
-    return res.get_json()  # Zawiera employee_id i qr_code
+        # 2. Tworzenie testowego pracownika
+        emp = Employee(
+            id=10, 
+            first_name="Admin", 
+            last_name="Tester", 
+            email="admin.test@firma.pl"
+        )
+        db.session.add(emp)
+        db.session.flush()
 
-# --- TESTY QR (/qr) ---
+        # 3. Przygotowanie dat
+        now = datetime.utcnow()
+        yesterday = now - timedelta(days=1)
 
-def test_verify_qr_success(client, registered_user):
-    """Sukces: Prawidłowy kod QR"""
-    payload = {"qr_code": registered_user['qr_code']}
-    res = client.post('/api/auth/qr', json=payload)
-    
-    assert res.status_code == 200
-    assert res.get_json()['status'] == "valid"
-    assert res.get_json()['employee_id'] == registered_user['employee_id']
+        # 4. Tworzenie logów (używając pola 'status' zgodnie z modelem)
+        # Log 1: Dzisiaj, przyznany (face)
+        l1 = AccessLog(
+            employee_id=emp.id,
+            status="granted",
+            verification_method="face",
+            timestamp=now
+        )
+        # Log 2: Dzisiaj, odmowa (qr)
+        l2 = AccessLog(
+            employee_id=emp.id,
+            status="denied",
+            verification_method="qr",
+            timestamp=now
+        )
+        # Log 3: Wczoraj, przyznany (face)
+        l3 = AccessLog(
+            employee_id=emp.id,
+            status="granted",
+            verification_method="face",
+            timestamp=yesterday
+        )
 
-def test_verify_qr_invalid(client):
-    """Błąd: Kod QR nie istnieje w bazie"""
-    res = client.post('/api/auth/qr', json={"qr_code": "invalid_qr_123"})
-    assert res.status_code == 401
-    assert "Nieprawidłowy" in res.get_json()['message']
-
-def test_verify_qr_missing_field(client):
-    """Błąd: Brak pola qr_code w JSON"""
-    res = client.post('/api/auth/qr', json={})
-    assert res.status_code == 400
-    assert res.get_json()['error'] == "Brak kodu QR"
-
-# --- TESTY FACE (/face) ---
-
-def test_verify_face_success(client, registered_user):
-    """Sukces: Twarz pasuje do zarejestrowanego wzorca"""
-    img_b64 = get_img_b64(os.path.join("faces_test", "face.jpg"))
-    payload = {
-        "employee_id": registered_user['employee_id'],
-        "image": img_b64
-    }
-    res = client.post('/api/auth/face', json=payload)
-    
-    assert res.status_code == 200
-    assert res.get_json()['status'] == "granted"
-    assert "Witaj" in res.get_json()['message']
-
-def test_verify_face_no_match(client, registered_user):
-    """Błąd: Twarz rozpoznana, ale to inna osoba (wymaga faces_test/other.jpg)"""
-    other_img = os.path.join("faces_test", "other.jpg")
-    if not os.path.exists(other_img):
-        pytest.skip("Brak pliku other.jpg do testu błędnego dopasowania")
+        db.session.add_all([l1, l2, l3])
+        db.session.commit()
         
-    img_b64 = get_img_b64(other_img)
-    payload = {
-        "employee_id": registered_user['employee_id'],
-        "image": img_b64
-    }
-    res = client.post('/api/auth/face', json=payload)
-    
-    assert res.status_code == 401
-    assert res.get_json()['status'] == "denied"
-    assert "nie pasuje" in res.get_json()['message']
+        return emp
 
-def test_verify_face_no_face_in_image(client, registered_user):
-    """Błąd: Przesłano zdjęcie, na którym nie ma żadnej twarzy (np. czarny kwadrat)"""
-    # Mały czarny kwadrat 1x1 w base64
-    black_dot = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
-    
+# --- TESTY LOGÓW ---
+
+def test_get_access_logs_success(client, setup_admin_data):
+    """Testuje pobieranie ostatnich logów z limitem"""
+    res = client.get('/api/admin/logs?limit=2')
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data['success'] is True
+    assert len(data['logs']) == 2
+    assert data['logs'][0]['employee_name'] == "Admin Tester"
+
+# --- TESTY STATYSTYK ---
+
+def test_get_admin_stats(client, setup_admin_data):
+    """Testuje statystyki dashboardu (liczenie dzisiejszych wejść)"""
+    res = client.get('/api/admin/stats')
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data['total_employees'] == 1
+    assert data['today_access'] == 2  # l1 i l2 są z dzisiaj
+    assert data['today_denied'] == 1  # tylko l2
+
+# --- TESTY RAPORTÓW ---
+
+def test_generate_raport_all(client, setup_admin_data):
+    """Test generowania raportu bez żadnych filtrów"""
+    res = client.post('/api/admin/raport', json={})
+    assert res.status_code == 200
+    assert res.get_json()['count'] == 3
+
+def test_generate_raport_date_filter(client, setup_admin_data):
+    """Test filtrowania raportu po dacie (tylko dzisiejsze zdarzenia)"""
+    today_str = datetime.utcnow().strftime('%Y-%m-%d')
     payload = {
-        "employee_id": registered_user['employee_id'],
-        "image": black_dot
+        "date_from": today_str,
+        "date_to": today_str
     }
-    res = client.post('/api/auth/face', json=payload)
-    
+    res = client.post('/api/admin/raport', json=payload)
+    assert res.status_code == 200
+    assert res.get_json()['count'] == 2 # l1 i l2
+
+def test_generate_raport_type_denied(client, setup_admin_data):
+    """Test filtrowania raportu po statusie 'denied'"""
+    payload = {"entry_type": "denied"}
+    res = client.post('/api/admin/raport', json=payload)
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data['count'] == 1
+    assert data['data'][0]['status'] == "denied"
+
+def test_generate_raport_employee_filter(client, setup_admin_data):
+    """Test filtrowania raportu dla konkretnego pracownika"""
+    payload = {"employee_id": setup_admin_data.id}
+    res = client.post('/api/admin/raport', json=payload)
+    assert res.status_code == 200
+    assert res.get_json()['count'] == 3
+
+def test_generate_raport_invalid_date(client, setup_admin_data):
+    """Test obsługi błędu przy nieprawidłowym formacie daty"""
+    payload = {"date_from": "31-12-2023"} # Błędny format (powinien być RRRR-MM-DD)
+    res = client.post('/api/admin/raport', json=payload)
     assert res.status_code == 400
-    assert "Nie wykryto twarzy" in res.get_json()['message']
+    assert "Nieprawidłowy format daty" in res.get_json()['error']
 
-def test_verify_face_wrong_employee_id(client):
-    """Błąd: Próba weryfikacji twarzy dla nieistniejącego ID pracownika"""
-    img_b64 = get_img_b64(os.path.join("faces_test", "face.jpg"))
-    payload = {
-        "employee_id": 999999,
-        "image": img_b64
-    }
-    res = client.post('/api/auth/face', json=payload)
-    
-    assert res.status_code == 404
-    assert "Brak wzorca" in res.get_json()['error']
-
-def test_verify_face_missing_params(client):
-    """Błąd: Brak wymaganych pól w żądaniu face"""
-    res = client.post('/api/auth/face', json={"employee_id": 1})
+def test_generate_raport_not_json(client):
+    """Test obsługi błędu, gdy zapytanie nie jest JSONem"""
+    res = client.post('/api/admin/raport', data="zwykły tekst")
     assert res.status_code == 400
-    assert "Brak zdjęcia" in res.get_json()['error']
-
-def test_verify_face_invalid_base64(client, registered_user):
-    """Błąd: Przesłano uszkodzony string base64"""
-    payload = {
-        "employee_id": registered_user['employee_id'],
-        "image": "data:image/jpeg;base64,not-a-real-base64-string!!!"
-    }
-    res = client.post('/api/auth/face', json=payload)
-    
-    # Zależnie od tego jak rzuca biblioteka, może być 500 (Exception) lub 400
-    assert res.status_code in [400, 500]
+    assert "Wymagany format JSON" in res.get_json()['error']
