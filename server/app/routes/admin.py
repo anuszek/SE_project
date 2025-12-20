@@ -105,11 +105,11 @@ def generate_raport():
         query = query.filter(AccessLog.employee_id == employee_id)
 
     # 4. Filtrowanie po typie wejścia
-    # Założyłem, że w AccessLog masz kolumnę 'is_granted' (bool)
+    
     if entry_type == 'access':
-        query = query.filter(AccessLog.is_granted == True)
+        query = query.filter(AccessLog.status == 'granted')
     elif entry_type == 'denied':
-        query = query.filter(AccessLog.is_granted == False)
+        query = query.filter(AccessLog.status == 'denied')
 
     # 5. Wykonanie zapytania i sortowanie od najnowszych
     results = query.order_by(AccessLog.timestamp.desc()).all()
@@ -122,7 +122,7 @@ def generate_raport():
             "employee_id": log.employee_id,
             "full_name": f"{emp.first_name} {emp.last_name}",
             "email": emp.email,
-            "is_granted": log.is_granted,
+            "status": log.status,
             "reason": getattr(log, 'reason', 'N/A') # Pobiera powód, jeśli kolumna istnieje
         })
 
