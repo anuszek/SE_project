@@ -83,3 +83,74 @@ def get_admin_stats():
         }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@admin_bp.route('/raport', methods=['POST'])
+def generate_raport():
+    """
+    Generuje raport zdarzeń z bazy access_logs.
+    Oczekuje JSON: { "date_from": "...", "date_to": "...", "entry_type": "...", "employee_id": ... }
+    """
+    if not request.is_json:
+        return jsonify({"error": "Wymagany format JSON"}), 400
+    
+    data = request.get_json()
+    date_from_str = data.get('date_from')
+    date_to_str = data.get('date_to')
+    entry_type = data.get('entry_type', 'all')  # domyślnie 'all'
+    employee_id = data.get('employee_id')
+
+    # 1. Budujemy podstawowe zapytanie z Joinem, żeby mieć dane pracownika
+    # Używamy db.session.query, bo łączymy dwie tabele
+    query = db.session.query(AccessLog, Employee).join(Employee, AccessLog.employee_id == Employee.id)
+
+    # 2. Filtrowanie po dacie
+    try:
+        if date_from_str:
+            date_from = datetime.strptime(date_from_str, '%Y-%m-%d')
+            query = query.filter(AccessLog.timestamp >= date_from)
+        
+        if date_to_str:
+            # Ustawiamy koniec dnia na 23:59:59
+            date_to = datetime.strptime(date_to_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            query = query.filter(AccessLog.timestamp <= date_to)
+    except ValueError:
+        return jsonify({"error": "Nieprawidłowy format daty. Użyj RRRR-MM-DD"}), 400
+
+    # 3. Filtrowanie po pracowniku
+    if employee_id:
+        query = query.filter(AccessLog.employee_id == employee_id)
+
+    # 4. Filtrowanie po typie wejścia
+    # Założyłem, że w AccessLog masz kolumnę 'is_granted' (bool)
+    if entry_type == 'access':
+        query = query.filter(AccessLog.is_granted == True)
+    elif entry_type == 'denied':
+        query = query.filter(AccessLog.is_granted == False)
+
+    # 5. Wykonanie zapytania i sortowanie od najnowszych
+    results = query.order_by(AccessLog.timestamp.desc()).all()
+
+    # 6. Mapowanie wyników do czytelnego formatu
+    raport_list = []
+    for log, emp in results:
+        raport_list.append({
+            "timestamp": log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            "employee_id": log.employee_id,
+            "full_name": f"{emp.first_name} {emp.last_name}",
+            "email": emp.email,
+            "is_granted": log.is_granted,
+            "reason": getattr(log, 'reason', 'N/A') # Pobiera powód, jeśli kolumna istnieje
+        })
+
+    return jsonify({
+        "status": "success",
+        "count": len(raport_list),
+        "filters": {
+            "date_from": date_from_str,
+            "date_to": date_to_str,
+            "entry_type": entry_type,
+            "employee_id": employee_id
+        },
+        "data": raport_list
+    }), 200
+    
