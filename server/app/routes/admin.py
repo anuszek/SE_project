@@ -5,24 +5,8 @@ from sqlalchemy.exc import IntegrityError
 import re
 from app.utils.db import db
 from app.models.employee import Employee
-from app.models.employee_face import FaceCredential
-from app.models.qr_code import QRCredential
-from app.services.face_service import FaceServices
-from app.services.qr_service import QRService
-from app.utils.helpers import delete_inactive_qr_codes, get_next_available_id, refresh_expired_qr_codes
 
 admin_bp = Blueprint('admin', __name__)
-
-@admin_bp.route('/clean_qr', methods=['POST', 'GET'])
-def admin_clean_qr():
-    """
-    Wywołanie: usuń nieaktywne i odśwież wygasłe.
-    """
-
-    # opcjonalnie: najpierw usuń nieaktywne, potem odśwież wygasłe
-    deleted = delete_inactive_qr_codes()
-    refreshed = refresh_expired_qr_codes()
-    return {"deleted": deleted, "refreshed": refreshed}, 200
 
 @admin_bp.route('/logs', methods=['GET'])
 def get_access_logs():
