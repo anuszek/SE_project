@@ -43,7 +43,11 @@ export async function deleteEmployee(employeeId) {
 
 export async function modifyEmployee(employeeData) {
   try {
-    const response = await api.put(`/${employeeData.id}/modify_employee`, employeeData);
+    const response = await api.put(`/${employeeData.id}/modify_employee`, {
+      first_name: employeeData.first_name,
+      last_name: employeeData.last_name,
+      email: employeeData.email
+    });
     return response.data;
   } catch (err) {
     const msg = err?.response?.data?.message || err?.message;
