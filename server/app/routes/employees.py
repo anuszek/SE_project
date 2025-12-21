@@ -97,7 +97,7 @@ def register_employee():
         return jsonify({
             "message": "Employee registered successfully",
             "employee_id": new_employee.id,
-            "qr_code": qr_code_data,
+            "is_active": new_qr.is_active,
         }), 201
 
     except IntegrityError:
@@ -106,17 +106,6 @@ def register_employee():
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
-
-@employees_bp.route('/<int:employee_id>/delete', methods=['DELETE'])
-def delete_employee(employee_id):
-    """Usuwa pracownika i jego dane biometryczne"""
-    employee = Employee.query.get(employee_id)
-    if not employee:
-        return jsonify({"error": "Employee not found"}), 404
-    
-    db.session.delete(employee)
-    db.session.commit()
-    return jsonify({"message": "Employee deleted"}), 200
 
 @employees_bp.route('/all', methods=['GET'])
 def get_all_employees():
@@ -131,6 +120,17 @@ def get_all_employees():
         "qr_code": emp.qr_code.qr_code_data if emp.qr_code else None,
         "expires_at": emp.qr_code.expires_at if emp.qr_code else None,
     } for emp in employees]), 200
+
+@employees_bp.route('/<int:employee_id>/delete', methods=['DELETE'])
+def delete_employee(employee_id):
+    """Usuwa pracownika i jego dane biometryczne"""
+    employee = Employee.query.get(employee_id)
+    if not employee:
+        return jsonify({"error": "Employee not found"}), 404
+    
+    db.session.delete(employee)
+    db.session.commit()
+    return jsonify({"message": "Employee deleted"}), 200
 
 @employees_bp.route('/<int:employee_id>/generate_new_qr_code', methods=['POST'])
 def generate_new_qr_code(employee_id):
@@ -159,40 +159,43 @@ def generate_new_qr_code(employee_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
     
-@employees_bp.route('/inactive_qr_code', methods=['POST'])
-def inactive_qr_code():
-    """Dezaktywuje kod QR dla danego pracownika"""
+@employees_bp.route('/<int:employee_id>/switch_qr_state', methods=['POST'])
+def switch_qr_state(employee_id):
+    """Zmienia stan aktywności kodu QR dla danego pracownika"""
+    
     data = request.get_json()
-    employee_id = data.get('employee_id')
-
-    if not employee_id:
-        return jsonify({"error": "Employee ID is required"}), 400
+    is_active = data.get('is_active')
+    
+    if is_active is None:
+        return jsonify({"error": "Missing 'is_active' field"}), 400
 
     employee = Employee.query.get(employee_id)
     if not employee:
         return jsonify({"error": "Employee not found"}), 404
 
     try:
-        employee.qr_code.is_active = False
+        employee.qr_code.is_active = is_active
         db.session.commit()
-        return jsonify({"message": "Inactive QR successfully"}), 200
+        return jsonify({
+            "message": f"QR code is now {'active' if is_active else 'inactive'}",
+            "is_active": is_active
+        }), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-@employees_bp.route('/modify_employee', methods=['PUT'])
-def modify_employee():
+@employees_bp.route('/<int:employee_id>/modify_employee', methods=['PUT'])
+def modify_employee(employee_id):
     """Modyfikuje dane pracownika"""
     if not request.is_json:
         return jsonify({"error": "Wymagany format JSON"}), 400
     
     data = request.get_json()
-    employee_id = data.get('employee_id')
     first_name = data.get('first_name')
     last_name = data.get('last_name')
     email = data.get('email')
 
-    if not employee_id or not first_name or not last_name or not email:
+    if not first_name or not last_name or not email:
         return jsonify({'error': 'Missing required fields'}), 400
 
     employee = Employee.query.get(employee_id)
