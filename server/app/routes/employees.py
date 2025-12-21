@@ -1,6 +1,5 @@
 from datetime import datetime
 from flask import Blueprint, request, jsonify
-from app.models.access_log import AccessLog
 from sqlalchemy.exc import IntegrityError
 import re
 from app.utils.db import db
@@ -9,7 +8,7 @@ from app.models.employee_face import FaceCredential
 from app.models.qr_code import QRCredential
 from app.services.face_service import FaceServices
 from app.services.qr_service import QRService
-from app.utils.helpers import delete_inactive_qr_codes, get_next_available_id, refresh_expired_qr_codes
+from app.utils.helpers import  get_next_available_id
 
 # Stałe walidacyjne
 MIN_NAME_LEN = 3
@@ -98,7 +97,7 @@ def register_employee():
         return jsonify({
             "message": "Employee registered successfully",
             "employee_id": new_employee.id,
-            "qr_code": qr_code_data,
+            "qr_code": new_qr.qr_code_data,
         }), 201
 
     except IntegrityError:
@@ -107,6 +106,23 @@ def register_employee():
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+
+@employees_bp.route('/all', methods=['GET'])
+def get_all_employees():
+    """Pobiera listę wszystkich pracowników"""
+    employees = Employee.query.all()
+    return jsonify([{
+        "id": emp.id,
+        "first_name": emp.first_name,
+        "last_name": emp.last_name,
+        "email": emp.email,
+        "created_at": emp.created_at,
+        "qr_credential": {
+            "qr_code": emp.qr_code.qr_code_data if emp.qr_code else None,
+            "expires_at": emp.qr_code.expires_at if emp.qr_code else None,
+            "is_active": emp.qr_code.is_active if emp.qr_code else None
+        } if emp.qr_code else None
+    } for emp in employees]), 200
 
 @employees_bp.route('/<int:employee_id>/delete', methods=['DELETE'])
 def delete_employee(employee_id):
@@ -119,16 +135,85 @@ def delete_employee(employee_id):
     db.session.commit()
     return jsonify({"message": "Employee deleted"}), 200
 
-@employees_bp.route('/all', methods=['GET'])
-def get_all_employees():
-    """Pobiera listę wszystkich pracowników"""
-    employees = Employee.query.all()
-    return jsonify([{
-        "id": emp.id,
-        "first_name": emp.first_name,
-        "last_name": emp.last_name,
-        "email": emp.email,
-        "created_at": emp.created_at,
-        "qr_code": emp.qr_code.qr_code_data if emp.qr_code else None,
-        "expires_at": emp.qr_code.expires_at if emp.qr_code else None,
-    } for emp in employees]), 200
+@employees_bp.route('/<int:employee_id>/generate_new_qr_code', methods=['POST'])
+def generate_new_qr_code(employee_id):
+    """Generuje całkowicie nowy QR dla pracownika"""
+
+    employee = Employee.query.get(employee_id)
+    if not employee:
+        return jsonify({"error": "Employee not found"}), 404
+
+    try:
+        new_code, new_exp = QRService.generate_credential()
+        
+        qr = employee.qr_code
+        qr.qr_code_data = new_code
+        qr.expires_at = new_exp
+        qr.is_active = True
+        
+        db.session.commit()
+        
+        return jsonify({
+            "message": "New QR code generated successfully",
+            "qr_code": new_code,
+            "expires_at": new_exp.isoformat()
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+    
+@employees_bp.route('/<int:employee_id>/switch_qr_state', methods=['POST'])
+def switch_qr_state(employee_id):
+    """Zmienia stan aktywności kodu QR dla danego pracownika"""
+    
+    data = request.get_json()
+    is_active = data.get('is_active')
+    
+    if is_active is None:
+        return jsonify({"error": "Missing 'is_active' field"}), 400
+
+    employee = Employee.query.get(employee_id)
+    if not employee:
+        return jsonify({"error": "Employee not found"}), 404
+
+    try:
+        employee.qr_code.is_active = is_active
+        db.session.commit()
+        return jsonify({
+            "message": f"QR code is now {'active' if is_active else 'inactive'}",
+            "is_active": is_active
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@employees_bp.route('/<int:employee_id>/modify_employee', methods=['PUT'])
+def modify_employee(employee_id):
+    """Modyfikuje dane pracownika"""
+    if not request.is_json:
+        return jsonify({"error": "Wymagany format JSON"}), 400
+    
+    data = request.get_json()
+    first_name = data.get('first_name')
+    last_name = data.get('last_name')
+    email = data.get('email')
+
+    if not first_name or not last_name or not email:
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    employee = Employee.query.get(employee_id)
+    if not employee:
+        return jsonify({"error": "Employee not found"}), 404
+    
+    try:
+        employee.first_name = first_name
+        employee.last_name = last_name
+        employee.email = email
+        db.session.commit()
+        return jsonify({"message": "Employee modified successfully"}), 200
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Email already exists"}), 409
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500    

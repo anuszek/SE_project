@@ -2,12 +2,22 @@ import sys
 import os
 import pytest
 import warnings
+from sqlalchemy.exc import LegacyAPIWarning
 
-# --- UKRYWANIE OSTRZEŻEŃ ---
-warnings.filterwarnings("ignore", category=UserWarning, module='face_recognition_models')
-warnings.filterwarnings("ignore", category=DeprecationWarning, module='sqlalchemy')
+# --- KONFIGURACJA IGNOROWANIA OSTRZEŻEŃ ---
+# Ignoruj ostrzeżenia o przestarzałym pkg_resources (z face_recognition)
 warnings.filterwarnings("ignore", category=UserWarning, message=".*pkg_resources is deprecated.*")
+
+# Ignoruj ostrzeżenia o Query.get() (SQLAlchemy Legacy)
+warnings.filterwarnings("ignore", category=LegacyAPIWarning)
+
+# Ignoruj ostrzeżenia o datetime.utcnow() (Python 3.12+)
+warnings.filterwarnings("ignore", category=DeprecationWarning, message=".*datetime.datetime.utcnow.*")
+
+# Ogólne ignorowanie DeprecationWarning dla czystości konsoli
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+# --- RESZTA PLIKU ---
 
 # Naprawa ścieżek
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -27,7 +37,6 @@ def app():
 
     with app.app_context():
         # IMPORTUJEMY MODELE TUTAJ - to kluczowe dla db.create_all()
-        # Dzięki temu SQLAlchemy wie, jakie tabele stworzyć w sqlite :memory:
         from app.models.employee import Employee
         from app.models.employee_face import FaceCredential
         from app.models.qr_code import QRCredential
@@ -48,5 +57,5 @@ def client(app):
 
 @pytest.fixture
 def runner(app):
-    """Fixture dla komend CLI (jeśli używasz)."""
+    """Fixture dla komend CLI."""
     return app.test_cli_runner()

@@ -5,24 +5,8 @@ from sqlalchemy.exc import IntegrityError
 import re
 from app.utils.db import db
 from app.models.employee import Employee
-from app.models.employee_face import FaceCredential
-from app.models.qr_code import QRCredential
-from app.services.face_service import FaceServices
-from app.services.qr_service import QRService
-from app.utils.helpers import delete_inactive_qr_codes, get_next_available_id, refresh_expired_qr_codes
 
 admin_bp = Blueprint('admin', __name__)
-
-@admin_bp.route('/clean_qr', methods=['POST', 'GET'])
-def admin_clean_qr():
-    """
-    Wywołanie: usuń nieaktywne i odśwież wygasłe.
-    """
-
-    # opcjonalnie: najpierw usuń nieaktywne, potem odśwież wygasłe
-    deleted = delete_inactive_qr_codes()
-    refreshed = refresh_expired_qr_codes()
-    return {"deleted": deleted, "refreshed": refreshed}, 200
 
 @admin_bp.route('/logs', methods=['GET'])
 def get_access_logs():
@@ -121,11 +105,11 @@ def generate_raport():
         query = query.filter(AccessLog.employee_id == employee_id)
 
     # 4. Filtrowanie po typie wejścia
-    # Założyłem, że w AccessLog masz kolumnę 'is_granted' (bool)
+    
     if entry_type == 'access':
-        query = query.filter(AccessLog.is_granted == True)
+        query = query.filter(AccessLog.status == 'granted')
     elif entry_type == 'denied':
-        query = query.filter(AccessLog.is_granted == False)
+        query = query.filter(AccessLog.status == 'denied')
 
     # 5. Wykonanie zapytania i sortowanie od najnowszych
     results = query.order_by(AccessLog.timestamp.desc()).all()
@@ -138,7 +122,7 @@ def generate_raport():
             "employee_id": log.employee_id,
             "full_name": f"{emp.first_name} {emp.last_name}",
             "email": emp.email,
-            "is_granted": log.is_granted,
+            "status": log.status,
             "reason": getattr(log, 'reason', 'N/A') # Pobiera powód, jeśli kolumna istnieje
         })
 

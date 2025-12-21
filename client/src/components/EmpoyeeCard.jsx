@@ -1,10 +1,11 @@
-import { PersonOutline } from "@mui/icons-material";
 import React from "react";
 import ReactDOM from "react-dom";
 import QRCode from "react-qr-code";
 import "./EmployeeCard.css";
 
-const EmployeeCard = ({ employee }) => {
+const EmployeeCard = ({ employee, onDelete, onModify, onChangeQRState }) => {
+  // console.log(employee);
+
   return (
     <div className="employee-card">
       <div className="details">
@@ -15,23 +16,37 @@ const EmployeeCard = ({ employee }) => {
           <li>ID: {employee.id}</li>
           <li>Email: {employee.email}</li>
           <li>Added: {new Date(employee.created_at).toLocaleDateString()}</li>
-          <li>Expires: {new Date(employee.expires_at).toLocaleDateString()}</li>
+          <li>
+            Expires:{" "}
+            {new Date(employee.qr_credential.expires_at).toLocaleDateString()}
+          </li>
         </ul>
       </div>
-      <QRCode value={employee.qr_code_data} size={150} />
+      <div className="qr-wrapper">
+        <QRCode value={employee.qr_credential.qr_code} size={150} />
+
+        {!employee.qr_credential.is_active && (
+          <div className="qr-overlay">
+            <span className="qr-error-text">QR Code Inactive</span>
+          </div>
+        )}
+      </div>
       <div className="button-group">
-        <div className="button" onClick={ () => {}}>
+        <div className="button" onClick={() => onModify(employee)}>
           Edit
         </div>
-        <div className="button" onClick={ () => {}}>
+        <div className="button" onClick={() => onDelete(employee)}>
           Delete
         </div>
-        <div className="button" onClick={ () => {}}>
-          Deactivate QR
-        </div>
-        <div className="button" onClick={ () => {}}>
-          Activate QR
-        </div>
+        {employee.qr_credential.is_active ? (
+          <div className="button" onClick={() => onChangeQRState(employee)}>
+            Deactivate QR
+          </div>
+        ) : (
+          <div className="button" onClick={() => onChangeQRState(employee)}>
+            Activate QR
+          </div>
+        )}
       </div>
     </div>
   );

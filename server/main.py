@@ -6,7 +6,7 @@ from flask import Flask
 from flask_cors import CORS
 from flask_migrate import Migrate
 from apscheduler.schedulers.background import BackgroundScheduler
-from app.utils.helpers import delete_inactive_qr_codes, refresh_expired_qr_codes
+from app.utils.helpers import refresh_expired_qr_codes
 from app.utils.db import db
 
 
@@ -93,9 +93,8 @@ def create_app():
             """Job: czyszczenie wygasłych i nieaktywnych QR"""
             with app.app_context():
                 try:
-                    deleted = delete_inactive_qr_codes()
                     refreshed = refresh_expired_qr_codes()
-                    print(f"[QR Cleanup Job] Deleted: {deleted}, Refreshed: {len(refreshed)} employees")
+                    print(f"[QR Cleanup Job] Refreshed: {len(refreshed)} employees")
                 except Exception as e:
                     print(f"[QR Cleanup Job] Error: {str(e)}")
 
