@@ -8,10 +8,10 @@ import {
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  changeQRState,
   deleteEmployee,
   fetchEmployees,
   generateNewQR,
-  inactivateQR,
   modifyEmployee,
 } from "../../api/employees.js";
 import EmployeeCard from "../../components/EmpoyeeCard.jsx";
@@ -23,6 +23,7 @@ const Employees = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState(null);
+  const [confirmation, setConfirmation] = useState(false);
 
   useEffect(() => {
     getEmployees();
@@ -35,7 +36,6 @@ const Employees = () => {
       setEmployees(
         data.map((emp) => ({
           ...emp,
-          qr_code_data: emp.qr_code,
         }))
       );
     } catch (error) {
@@ -45,12 +45,19 @@ const Employees = () => {
     }
   };
 
+  const showDeleteConfirmation = (employeeData) => {
+    setConfirmation(true);
+    setCurrentEmployee(employeeData);
+  };
+
   const handleDelete = async (employeeId) => {
     try {
       await deleteEmployee(employeeId);
       setEmployees(employees.filter((emp) => emp.id !== employeeId));
     } catch (error) {
       console.error("Error deleting employee:", error);
+    } finally {
+      setConfirmation(false);
     }
   };
 
@@ -60,8 +67,15 @@ const Employees = () => {
   };
 
   const handleModify = async (employeeData) => {
+    const newData = {
+      id: employeeData.id,
+      first_name: document.getElementById("first-name").value,
+      last_name: document.getElementById("last-name").value,
+      email: document.getElementById("email").value,
+    };
+
     try {
-      const updatedEmployee = await modifyEmployee(employeeData);
+      const updatedEmployee = await modifyEmployee(newData);
       setEmployees(
         employees.map((emp) =>
           emp.id === updatedEmployee.id
@@ -69,6 +83,8 @@ const Employees = () => {
             : emp
         )
       );
+      getEmployees();
+      setEditing(false);
     } catch (error) {
       console.error("Error modifying employee:", error);
     }
@@ -84,23 +100,46 @@ const Employees = () => {
             : emp
         )
       );
+
+      const button = document.getElementById("new_qr");
+      button.innerHTML = "<p>QR Generated, save to apply</p>";
+      button.removeAttribute("class")
     } catch (error) {
       console.error("Error generating new QR code:", error);
     }
   };
 
-  const handleInactivateQR = async (employeeId) => {
-    try {
-      const updatedEmployee = await inactivateQR(employeeId);
-      setEmployees(
-        employees.map((emp) =>
-          emp.id === updatedEmployee.id
-            ? { ...updatedEmployee, qr_code_data: updatedEmployee.qr_code }
-            : emp
-        )
-      );
-    } catch (error) {
-      console.error("Error inactivating QR code:", error);
+  const handleQRState = async (employeeData) => {
+    const employeeId = employeeData.id;
+    console.log(employeeData);
+    if (!employeeData.qr_credential.is_active) {
+      try {
+        const updatedEmployee = await changeQRState(employeeId, true);
+        setEmployees(
+          employees.map((emp) =>
+            emp.id === updatedEmployee.id
+              ? { ...updatedEmployee, qr_code_data: updatedEmployee.qr_code }
+              : emp
+          )
+        );
+        getEmployees();
+      } catch (error) {
+        console.error("Error activating QR code:", error);
+      }
+    } else {
+      try {
+        const updatedEmployee = await changeQRState(employeeId, false);
+        setEmployees(
+          employees.map((emp) =>
+            emp.id === updatedEmployee.id
+              ? { ...updatedEmployee, qr_code_data: updatedEmployee.qr_code }
+              : emp
+          )
+        );
+        getEmployees();
+      } catch (error) {
+        console.error("Error inactivating QR code:", error);
+      }
     }
   };
 
@@ -109,7 +148,7 @@ const Employees = () => {
   return (
     <div className="employees-container">
       {editing && (
-        <div className="edit-overlay">
+        <div className="overlay">
           <div className="edit-form">
             <div className="edit-header">
               <h2>Edit Employee</h2>
@@ -148,14 +187,46 @@ const Employees = () => {
                   label="Email"
                 />
               </FormControl>
-              <div className="button">New QR</div>
+              <div
+                id="new_qr"
+                className="button"
+                onClick={() => handleGenerateNewQR(currentEmployee.id)}
+              >
+                New QR
+              </div>
               <hr className="hr-line" />
               <button className="button button-submit" type="submit">
                 Save Changes
               </button>
             </form>
-            <div className="button button-cancel" onClick={() => setEditing(false)}>
+            <div
+              className="button button-cancel"
+              onClick={() => setEditing(false)}
+            >
               Cancel
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmation && (
+        <div className="overlay">
+          <div className="confirmation-box">
+            <p>Are you sure you want to delete this employee?</p>
+            <div className="confirmation-buttons">
+              <div
+                className="button button-submit"
+                onClick={() => handleDelete(currentEmployee.id)}
+              >
+                Yes
+              </div>
+              <div
+                className="button button-cancel"
+                onClick={() => {
+                  setConfirmation(false);
+                }}
+              >
+                No
+              </div>
             </div>
           </div>
         </div>
@@ -177,10 +248,9 @@ const Employees = () => {
           <EmployeeCard
             key={emp.id}
             employee={emp}
-            onDelete={handleDelete}
+            onDelete={showDeleteConfirmation}
             onModify={showModify}
-            onGenerateNewQR={handleGenerateNewQR}
-            onInactivateQR={handleInactivateQR}
+            onChangeQRState={handleQRState}
           />
         ))}
       </div>

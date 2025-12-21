@@ -19,8 +19,33 @@
   margin: 0;
 }
 
-.qr-code {
-  min-width: 9.5rem;
+.qr-wrapper {
+  position: relative; 
+  display: inline-block; 
+  width: 150px; 
+  height: 150px;
+}
+
+.qr-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(2px); 
+  z-index: 10;
+}
+
+.qr-error-text {
+  color: var(--color-error); 
+  font-weight: bold;
+  font-size: 1.2rem;
+  text-align: center;
+  transform: rotate(-15deg); 
 }
 
 .button-group {

@@ -67,7 +67,7 @@ export async function generateNewQR(employeeId) {
   }
 }
 
-export async function switchQRstate(employeeId, isActive) {
+export async function changeQRState(employeeId, isActive) {
   try {
     const response = await api.post(`/${employeeId}/switch_qr_state`, {
       is_active: isActive
