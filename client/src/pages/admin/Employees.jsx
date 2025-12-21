@@ -38,6 +38,7 @@ const Employees = () => {
           qr_code_data: emp.qr_code,
         }))
       );
+     
     } catch (error) {
       console.error("Error fetching employees:", error);
     } finally {
@@ -56,10 +57,11 @@ const Employees = () => {
 
   const showModify = (employeeData) => {
     setEditing(true);
-    setCurrentEmployee(employeeData);
+    setCurrentEmployee(employeeData);   
   };
 
-  const handleModify = async (employeeData) => {
+  const handleModify = async (employeeData) => { 
+
     try {
       const updatedEmployee = await modifyEmployee(employeeData);
       setEmployees(

@@ -24,7 +24,7 @@ const EmployeeCard = ({
         </ul>
       </div>
       <div className="qr-code">
-        <QRCode value={employee.qr_code_data} size={150} />
+        <QRCode value={employee.qr_code} size={150} />
       </div>
       <div className="button-group">
         <div className="button" onClick={() => onModify(employee)}>
@@ -33,13 +33,13 @@ const EmployeeCard = ({
         <div className="button" onClick={() => onDelete(employee.id)}>
           Delete
         </div>
-        {!employee.is_active ? (
+        {employee.is_active ? (
           <div className="button" onClick={() => onInactivateQR(employee.id)}>
-            Deactivate QR
+            Deactivate
           </div>
         ) : (
           <div className="button" onClick={() => onGenerateNewQR(employee.id)}>
-            Activate QR
+            Activate
           </div>
         )}
       </div>
