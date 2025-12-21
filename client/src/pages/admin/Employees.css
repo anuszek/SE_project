@@ -15,10 +15,65 @@
   border-radius: var(--radius-2xl);
 }
 
-.employees-list{
+.employees-list {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   gap: var(--spacing-lg);
+}
+
+.edit-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.edit-form {
+  background-color: var(--color-container-background);
+  padding: var(--padding-xl);
+  border-radius: var(--radius-lg);
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.edit-form form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.edit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: top;
+}
+
+.button-submit {
+  background: var(--color-success) !important;
+  color: var(--color-success-text) !important;
+  font-size: 1rem;
+}
+
+.button-submit:hover {
+  background: var(--color-success-dark) !important;
+}
+
+.button-cancel {
+  background: var(--color-error) !important;
+  color: var(--color-error-text) !important;
+}
+
+.button-cancel:hover {
+  background: var(--color-error-dark) !important;
+  color: white !important;
 }

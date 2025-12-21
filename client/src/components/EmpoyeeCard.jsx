@@ -1,10 +1,15 @@
-import { PersonOutline } from "@mui/icons-material";
 import React from "react";
 import ReactDOM from "react-dom";
 import QRCode from "react-qr-code";
 import "./EmployeeCard.css";
 
-const EmployeeCard = ({ employee }) => {
+const EmployeeCard = ({
+  employee,
+  onDelete,
+  onModify,
+  onGenerateNewQR,
+  onInactivateQR,
+}) => {
   return (
     <div className="employee-card">
       <div className="details">
@@ -18,20 +23,25 @@ const EmployeeCard = ({ employee }) => {
           <li>Expires: {new Date(employee.expires_at).toLocaleDateString()}</li>
         </ul>
       </div>
-      <QRCode value={employee.qr_code_data} size={150} />
+      <div className="qr-code">
+        <QRCode value={employee.qr_code_data} size={150} />
+      </div>
       <div className="button-group">
-        <div className="button" onClick={ () => {}}>
+        <div className="button" onClick={() => onModify(employee)}>
           Edit
         </div>
-        <div className="button" onClick={ () => {}}>
+        <div className="button" onClick={() => onDelete(employee.id)}>
           Delete
         </div>
-        <div className="button" onClick={ () => {}}>
-          Deactivate QR
-        </div>
-        <div className="button" onClick={ () => {}}>
-          Activate QR
-        </div>
+        {!employee.is_active ? (
+          <div className="button" onClick={() => onInactivateQR(employee.id)}>
+            Deactivate QR
+          </div>
+        ) : (
+          <div className="button" onClick={() => onGenerateNewQR(employee.id)}>
+            Activate QR
+          </div>
+        )}
       </div>
     </div>
   );
