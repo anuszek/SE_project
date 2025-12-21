@@ -36,7 +36,6 @@ const Employees = () => {
       setEmployees(
         data.map((emp) => ({
           ...emp,
-          qr_code_data: emp.qr_code,
         }))
       );
     } catch (error) {
@@ -68,8 +67,15 @@ const Employees = () => {
   };
 
   const handleModify = async (employeeData) => {
+    const newData = {
+      id: employeeData.id,
+      first_name: document.getElementById("first-name").value,
+      last_name: document.getElementById("last-name").value,
+      email: document.getElementById("email").value,
+    };
+
     try {
-      const updatedEmployee = await modifyEmployee(employeeData);
+      const updatedEmployee = await modifyEmployee(newData);
       setEmployees(
         employees.map((emp) =>
           emp.id === updatedEmployee.id
@@ -77,12 +83,14 @@ const Employees = () => {
             : emp
         )
       );
+      getEmployees();
+      setEditing(false);
     } catch (error) {
       console.error("Error modifying employee:", error);
     }
   };
 
-  const handleGenerateNewQR = async (employeeId) => {  
+  const handleGenerateNewQR = async (employeeId) => {
     try {
       const updatedEmployee = await generateNewQR(employeeId);
       setEmployees(
@@ -92,23 +100,46 @@ const Employees = () => {
             : emp
         )
       );
+
+      const button = document.getElementById("new_qr");
+      button.innerHTML = "<p>QR Generated, save to apply</p>";
+      button.removeAttribute("class")
     } catch (error) {
       console.error("Error generating new QR code:", error);
     }
   };
 
-  const handleQRState = async (employeeId) => {
-    try {
-      const updatedEmployee = await changeQRState(employeeId, false);
-      setEmployees(
-        employees.map((emp) =>
-          emp.id === updatedEmployee.id
-            ? { ...updatedEmployee, qr_code_data: updatedEmployee.qr_code }
-            : emp
-        )
-      );
-    } catch (error) {
-      console.error("Error inactivating QR code:", error);
+  const handleQRState = async (employeeData) => {
+    const employeeId = employeeData.id;
+    console.log(employeeData);
+    if (!employeeData.qr_credential.is_active) {
+      try {
+        const updatedEmployee = await changeQRState(employeeId, true);
+        setEmployees(
+          employees.map((emp) =>
+            emp.id === updatedEmployee.id
+              ? { ...updatedEmployee, qr_code_data: updatedEmployee.qr_code }
+              : emp
+          )
+        );
+        getEmployees();
+      } catch (error) {
+        console.error("Error activating QR code:", error);
+      }
+    } else {
+      try {
+        const updatedEmployee = await changeQRState(employeeId, false);
+        setEmployees(
+          employees.map((emp) =>
+            emp.id === updatedEmployee.id
+              ? { ...updatedEmployee, qr_code_data: updatedEmployee.qr_code }
+              : emp
+          )
+        );
+        getEmployees();
+      } catch (error) {
+        console.error("Error inactivating QR code:", error);
+      }
     }
   };
 
@@ -157,6 +188,7 @@ const Employees = () => {
                 />
               </FormControl>
               <div
+                id="new_qr"
                 className="button"
                 onClick={() => handleGenerateNewQR(currentEmployee.id)}
               >
