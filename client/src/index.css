@@ -25,8 +25,10 @@
   --color-success-bg: #c6f6d5;
   --color-success-text: #22543d;
 
-  --color-error: #742a2a;
+  --color-error: #c53030;
+  --color-error-dark: #742a2a;
   --color-error-bg: #fed7d7;
+  --color-error-text: #742a2a;
 
   --color-info: #4299e1;
   --color-info-dark: #3182ce;
@@ -106,6 +108,7 @@
   --gradient-success: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
   --gradient-info: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
   --gradient-warning: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+  --gradient-error: linear-gradient(135deg, #f56565 0%, #c53030 100%);
 }
 
 * {

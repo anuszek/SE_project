@@ -2,21 +2,10 @@
   background-color: var(--color-container-background);
   border-radius: var(--radius-md);
   display: flex;
-  justify-content: space-between;
+  justify-content: space-around;
   align-items: center;
   padding: var(--padding-md);
   width: 60%;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-}
-
-.button-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
 }
 
 .details {
@@ -28,4 +17,14 @@
   list-style: none;
   padding: 0;
   margin: 0;
+}
+
+.qr-code {
+  min-width: 9.5rem;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
 }
