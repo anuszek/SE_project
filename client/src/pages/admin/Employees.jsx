@@ -8,10 +8,10 @@ import {
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  changeQRState,
   deleteEmployee,
   fetchEmployees,
   generateNewQR,
-  inactivateQR,
   modifyEmployee,
 } from "../../api/employees.js";
 import EmployeeCard from "../../components/EmpoyeeCard.jsx";
@@ -23,6 +23,7 @@ const Employees = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState(null);
+  const [confirmation, setConfirmation] = useState(false);
 
   useEffect(() => {
     getEmployees();
@@ -38,12 +39,16 @@ const Employees = () => {
           qr_code_data: emp.qr_code,
         }))
       );
-     
     } catch (error) {
       console.error("Error fetching employees:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const showDeleteConfirmation = (employeeData) => {
+    setConfirmation(true);
+    setCurrentEmployee(employeeData);
   };
 
   const handleDelete = async (employeeId) => {
@@ -52,16 +57,17 @@ const Employees = () => {
       setEmployees(employees.filter((emp) => emp.id !== employeeId));
     } catch (error) {
       console.error("Error deleting employee:", error);
+    } finally {
+      setConfirmation(false);
     }
   };
 
   const showModify = (employeeData) => {
     setEditing(true);
-    setCurrentEmployee(employeeData);   
+    setCurrentEmployee(employeeData);
   };
 
-  const handleModify = async (employeeData) => { 
-
+  const handleModify = async (employeeData) => {
     try {
       const updatedEmployee = await modifyEmployee(employeeData);
       setEmployees(
@@ -76,7 +82,7 @@ const Employees = () => {
     }
   };
 
-  const handleGenerateNewQR = async (employeeId) => {
+  const handleGenerateNewQR = async (employeeId) => {  
     try {
       const updatedEmployee = await generateNewQR(employeeId);
       setEmployees(
@@ -91,9 +97,9 @@ const Employees = () => {
     }
   };
 
-  const handleInactivateQR = async (employeeId) => {
+  const handleQRState = async (employeeId) => {
     try {
-      const updatedEmployee = await inactivateQR(employeeId);
+      const updatedEmployee = await changeQRState(employeeId, false);
       setEmployees(
         employees.map((emp) =>
           emp.id === updatedEmployee.id
@@ -111,7 +117,7 @@ const Employees = () => {
   return (
     <div className="employees-container">
       {editing && (
-        <div className="edit-overlay">
+        <div className="overlay">
           <div className="edit-form">
             <div className="edit-header">
               <h2>Edit Employee</h2>
@@ -150,14 +156,45 @@ const Employees = () => {
                   label="Email"
                 />
               </FormControl>
-              <div className="button">New QR</div>
+              <div
+                className="button"
+                onClick={() => handleGenerateNewQR(currentEmployee.id)}
+              >
+                New QR
+              </div>
               <hr className="hr-line" />
               <button className="button button-submit" type="submit">
                 Save Changes
               </button>
             </form>
-            <div className="button button-cancel" onClick={() => setEditing(false)}>
+            <div
+              className="button button-cancel"
+              onClick={() => setEditing(false)}
+            >
               Cancel
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmation && (
+        <div className="overlay">
+          <div className="confirmation-box">
+            <p>Are you sure you want to delete this employee?</p>
+            <div className="confirmation-buttons">
+              <div
+                className="button button-submit"
+                onClick={() => handleDelete(currentEmployee.id)}
+              >
+                Yes
+              </div>
+              <div
+                className="button button-cancel"
+                onClick={() => {
+                  setConfirmation(false);
+                }}
+              >
+                No
+              </div>
             </div>
           </div>
         </div>
@@ -179,10 +216,9 @@ const Employees = () => {
           <EmployeeCard
             key={emp.id}
             employee={emp}
-            onDelete={handleDelete}
+            onDelete={showDeleteConfirmation}
             onModify={showModify}
-            onGenerateNewQR={handleGenerateNewQR}
-            onInactivateQR={handleInactivateQR}
+            onChangeQRState={handleQRState}
           />
         ))}
       </div>

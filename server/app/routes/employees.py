@@ -97,7 +97,7 @@ def register_employee():
         return jsonify({
             "message": "Employee registered successfully",
             "employee_id": new_employee.id,
-            "is_active": new_qr.is_active,
+            "qr_code": new_qr.qr_code_data,
         }), 201
 
     except IntegrityError:
@@ -117,8 +117,11 @@ def get_all_employees():
         "last_name": emp.last_name,
         "email": emp.email,
         "created_at": emp.created_at,
-        "qr_code": emp.qr_code.qr_code_data if emp.qr_code else None,
-        "expires_at": emp.qr_code.expires_at if emp.qr_code else None,
+        "qr_credential": {
+            "qr_code": emp.qr_code.qr_code_data if emp.qr_code else None,
+            "expires_at": emp.qr_code.expires_at if emp.qr_code else None,
+            "is_active": emp.qr_code.is_active if emp.qr_code else None
+        } if emp.qr_code else None
     } for emp in employees]), 200
 
 @employees_bp.route('/<int:employee_id>/delete', methods=['DELETE'])

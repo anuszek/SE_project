@@ -23,7 +23,7 @@
   gap: var(--spacing-lg);
 }
 
-.edit-overlay {
+.overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -76,4 +76,20 @@
 .button-cancel:hover {
   background: var(--color-error-dark) !important;
   color: white !important;
+}
+
+.confirmation-box {
+  background-color: var(--color-container-background);
+  padding: var(--padding-xl);
+  border-radius: var(--radius-lg);
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.confirmation-buttons {
+  display: flex;
+  gap: 100px;
+  margin-top: var(--spacing-md);
 }
