@@ -167,9 +167,7 @@ const Employees = () => {
         <div>
           <h1>Manage your employees</h1>
           <p className="subtitle">
-            you can delete, modify or dance on the barrows of your employees, oh
-            Lord of Metinna, Ebbing, Gemmera and Sovereign of Nazair and
-            Vicovaro
+            Delete, modify or generate new QR codes for your employees
           </p>
         </div>
       </div>
