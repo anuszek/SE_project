@@ -132,14 +132,9 @@ def get_all_employees():
         "expires_at": emp.qr_code.expires_at if emp.qr_code else None,
     } for emp in employees]), 200
 
-@employees_bp.route('/generate_new_qr_code', methods=['POST'])
-def generate_new_qr_code():
+@employees_bp.route('/<int:employee_id>/generate_new_qr_code', methods=['POST'])
+def generate_new_qr_code(employee_id):
     """Generuje całkowicie nowy QR dla pracownika"""
-    data = request.get_json()
-    employee_id = data.get('employee_id')
-
-    if not employee_id:
-        return jsonify({"error": "Employee ID is required"}), 400
 
     employee = Employee.query.get(employee_id)
     if not employee:
