@@ -34,7 +34,6 @@
   gap: var(--spacing-md);
 }
 
-
 /* Loading State */
 .loading {
   display: flex;

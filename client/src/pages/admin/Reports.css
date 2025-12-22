@@ -1,0 +1,122 @@
+.reports-container {
+  padding: var(--padding-2xl);
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+.reports-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--padding-2xl);
+  background-color: var(--color-container-background);
+  padding: var(--padding-xl);
+  border-radius: var(--radius-2xl);
+}
+
+/* Filters */
+.filters-panel {
+  background: var(--color-container-background);
+  padding: 20px;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: flex-end;
+  margin-bottom: 30px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filter-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.filter-group input,
+.filter-group select {
+  padding: 8px 12px;
+  border: 0.1rem solid var(--color-primary-darker);
+  border-radius: 4px;
+  min-width: 150px;
+}
+
+.generate-btn {
+  margin-left: auto;
+}
+
+/* Table */
+.results-panel {
+  background: var(--color-container-background);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  margin-bottom: 30px;
+}
+
+.report-table th,
+.report-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: var(--border-light);
+}
+
+.report-table th {
+  padding: var(--spacing-md);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-dark);
+  font-size: var(--font-sm);
+  text-transform: uppercase;
+}
+
+.report-table td {
+  padding: var(--spacing-md);
+  border-top: var(--border-light);
+  color: var(--color-text-secondary);
+}
+
+.report-table tbody tr:hover {
+  background-color: var(--color-background-hover);
+}
+
+.emp-email {
+  color: var(--color-text-muted);
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-block;
+  padding: var(--padding-xs);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-xs);
+  font-weight: var(--font-medium);
+}
+
+.status-badge.granted {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.status-badge.denied {
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
+}
+
+.error-message {
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
+  padding: 10px;
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+}

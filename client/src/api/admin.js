@@ -38,3 +38,16 @@ export async function getEmployeeStats() {
     throw new Error(msg);
   }
 }
+
+export async function getReports(filters) {
+  // filters object: { "date_from": "...", "date_to": "...", "entry_type": "...", "employee_id": ... }
+  try {
+    const response = await adminApi.post("/raport", filters);
+    console.log(response.data);
+    return response.data;
+  } catch (err) {
+    const msg =
+      err?.response?.data?.error || err?.message || "Report generation failed";
+    throw new Error(msg);
+  }
+}
