@@ -307,6 +307,145 @@
   font-size: var(--font-sm);
 }
 
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* Dim background */
+  backdrop-filter: blur(4px); /* Glassmorphism effect */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Ensure it sits on top of everything */
+  padding: var(--padding-md);
+}
+
+.modal-container {
+  background: var(--color-container-background);
+  width: 100%;
+  max-width: 900px;
+  max-height: 85vh; /* Keep it from touching screen edges */
+  border-radius: var(--radius-2xl);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Modal Header */
+.modal-header {
+  padding: var(--padding-lg) var(--padding-2xl);
+  border-bottom: 1px solid var(--border-light, #e2e8f0);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--color-container-background);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: var(--font-xl);
+  color: var(--color-text-main);
+  font-weight: var(--font-semibold);
+}
+
+/* Close Button */
+.close-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: var(--padding-xs);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-base);
+}
+
+.close-button:hover {
+  color: var(--color-error);
+}
+
+.close-button svg {
+  width: var(--icon-lg);
+  height: var(--icon-lg);
+}
+
+/* Modal Body */
+.modal-body {
+  flex: 1;
+  overflow-y: auto; /* Scroll ONLY the body, keep header fixed */
+  padding: 0; /* Remove padding so table spans full width */
+}
+
+/* Adjust table inside modal */
+.modal-body .activity-table table {
+  width: 100%;
+}
+
+.modal-body .activity-table th {
+  position: sticky;
+  top: 0;
+  background-color: var(
+    --color-container-background
+  ); /* Keep header opaque on scroll */
+  z-index: 10;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.modal-body .activity-table td,
+.modal-body .activity-table th {
+  padding-left: var(--padding-2xl);
+  padding-right: var(--padding-2xl);
+}
+
+/* Loading Spinner inside Modal */
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--padding-2xl);
+  color: var(--color-text-muted);
+  font-size: var(--font-lg);
+  min-height: 200px;
+}
+
+/* Modal Animation */
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Responsive adjustments for Modal */
+@media (max-width: 768px) {
+  .modal-container {
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    width: 100%;
+  }
+
+  .modal-header {
+    padding: var(--padding-md);
+  }
+
+  .modal-body .activity-table td,
+  .modal-body .activity-table th {
+    padding-left: var(--padding-md);
+    padding-right: var(--padding-md);
+  }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .dashboard-container {

@@ -1,15 +1,15 @@
 import {
   AccountCircleOutlined,
   AssessmentOutlined,
-  BrowseGalleryOutlined,
   CheckCircleOutlineOutlined,
   ChecklistRtlOutlined,
+  Close, 
+  LocalPolice,
   ManageAccountsOutlined,
   PeopleOutline,
   PersonAddAltOutlined,
   QrCodeOutlined,
   SyncOutlined,
-  LocalPolice,
 } from "@mui/icons-material";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -23,9 +23,13 @@ const Dashboard = () => {
     todayAccess: 0,
     pendingVerifications: 0,
   });
-
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Modal State
+  const [showModal, setShowModal] = useState(false);
+  const [allLogs, setAllLogs] = useState([]);
+  const [modalLoading, setModalLoading] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -39,28 +43,46 @@ const Dashboard = () => {
         totalEmployees: statsData.total_employees,
         activeEmployees: statsData.active_employees,
         todayAccess: statsData.today_access,
-        pendingVerifications: statsData.pending_verifications,
+        incorrectEntries: statsData.today_denied,
       };
 
       setStats(newStats);
 
+      // Fetch limited logs for the dashboard widget
       const logsData = await getAccessLogs(newStats.todayAccess);
-
-      setRecentActivity(
-        logsData.map((log) => ({
-          id: log.id,
-          employee: log.employee_name || `Employee ${log.employee_id}`,
-          action: log.status === "granted" ? "Checked In" : "Denied",
-          method:
-            log.verification_method === "face" ? "Face Recognition" : "QR Code",
-          time: new Date(log.timestamp).toLocaleTimeString(),
-        }))
-      );
+      setRecentActivity(formatLogs(logsData));
 
       setLoading(false);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       setLoading(false);
+    }
+  };
+
+  // Helper to format logs consistently for both dashboard and modal
+  const formatLogs = (data) => {
+    return data.map((log) => ({
+      id: log.id,
+      employee: log.employee_name || `Employee ${log.employee_id}`,
+      action: log.status === "granted" ? "Checked In" : "Denied",
+      method:
+        log.verification_method === "face" ? "Face Recognition" : "QR Code",
+      time: new Date(log.timestamp).toLocaleString(), // Changed to toLocaleString for full date in modal
+    }));
+  };
+
+  const handleViewAllClick = async () => {
+    setShowModal(true);
+    setModalLoading(true);
+    try {
+      // Assuming getAccessLogs without arguments or with a specific flag returns all history
+      // You might need to adjust this API call based on your backend pagination logic
+      const allData = await getAccessLogs();
+      setAllLogs(formatLogs(allData));
+    } catch (error) {
+      console.error("Error fetching all logs", error);
+    } finally {
+      setModalLoading(false);
     }
   };
 
@@ -85,9 +107,7 @@ const Dashboard = () => {
           <Link to="/" className="button">
             Back to Home
           </Link>
-          <Link to="/admin/settings" className="button">
-            Settings
-          </Link>
+          <div className="button">Settings</div>
         </div>
       </div>
 
@@ -128,7 +148,7 @@ const Dashboard = () => {
             <LocalPolice />
           </div>
           <div className="stat-content">
-            <h3>{stats.pendingVerifications}</h3>
+            <h3>{stats.incorrectEntries}</h3>
             <p>Incorrect Entries</p>
           </div>
         </div>
@@ -173,9 +193,14 @@ const Dashboard = () => {
       <div className="recent-activity">
         <div className="activity-header">
           <h2>Recent Activity</h2>
-          <Link to="/admin/reports" className="view-all-link">
+          {/* Changed Link to a button/span with onClick */}
+          <span
+            className="view-all-link"
+            onClick={handleViewAllClick}
+            style={{ cursor: "pointer" }}
+          >
             View All
-          </Link>
+          </span>
         </div>
         <div className="activity-table">
           <table>
@@ -222,6 +247,76 @@ const Dashboard = () => {
           </table>
         </div>
       </div>
+
+      {/* Full History Modal */}
+      {showModal && (
+        <div className="modal-overlay">
+          <div className="modal-container">
+            <div className="modal-header">
+              <h2>All Access Logs</h2>
+              <button
+                className="close-button"
+                onClick={() => setShowModal(false)}
+              >
+                <Close />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {modalLoading ? (
+                <div className="loading-spinner">Loading history...</div>
+              ) : (
+                <div className="activity-table full-width-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Employee</th>
+                        <th>Action</th>
+                        <th>Method</th>
+                        <th>Date & Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allLogs.map((activity) => (
+                        <tr key={activity.id}>
+                          <td>#{activity.id}</td>
+                          <td className="employee-name">{activity.employee}</td>
+                          <td>
+                            <span
+                              className={`status-badge ${
+                                activity.action === "Checked In"
+                                  ? "status-in"
+                                  : "status-out"
+                              }`}
+                            >
+                              {activity.action}
+                            </span>
+                          </td>
+                          <td className="method-cell">
+                            {activity.method === "Face Recognition" ? (
+                              <span className="method-tag method-face">
+                                <AccountCircleOutlined />
+                                Face
+                              </span>
+                            ) : (
+                              <span className="method-tag method-qr">
+                                <QrCodeOutlined />
+                                QR Code
+                              </span>
+                            )}
+                          </td>
+                          <td className="time-cell">{activity.time}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
