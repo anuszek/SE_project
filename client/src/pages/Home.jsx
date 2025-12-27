@@ -82,6 +82,7 @@ const Home = () => {
     setFaceImage(null);
     setVerificationResult(null);
     setAccessGranted(false);
+    setIsPaused(false);
   };
 
   const getStepNumber = () => {

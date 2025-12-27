@@ -6,6 +6,7 @@ import "./FaceCapture.css";
 const FaceCapture = ({ onCapture, automatic = false }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const streamRef = useRef(null);
   const [stream, setStream] = useState(null);
   const [capturedImage, setCapturedImage] = useState(null);
   const [error, setError] = useState(null);
@@ -39,6 +40,8 @@ const FaceCapture = ({ onCapture, automatic = false }) => {
         },
       });
       setStream(mediaStream);
+      streamRef.current = mediaStream;
+
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
@@ -53,8 +56,10 @@ const FaceCapture = ({ onCapture, automatic = false }) => {
   };
 
   const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      setStream(null);
     }
   };
 
