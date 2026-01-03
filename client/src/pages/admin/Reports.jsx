@@ -132,7 +132,6 @@ const Reports = () => {
                 <th>Timestamp</th>
                 <th>Employee</th>
                 <th>Status</th>
-                <th>Details</th>
               </tr>
             </thead>
             <tbody>
@@ -155,7 +154,6 @@ const Reports = () => {
                         {row.status}
                       </span>
                     </td>
-                    <td>{row.reason}</td>
                   </tr>
                 ))
               )}

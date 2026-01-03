@@ -1,8 +1,6 @@
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 from app.models.access_log import AccessLog
-from sqlalchemy.exc import IntegrityError
-import re
 from app.utils.db import db
 from app.models.employee import Employee
 from app.models.employee_face import FaceCredential
