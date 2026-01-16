@@ -113,16 +113,47 @@ def generate_raport():
     results = query.order_by(AccessLog.timestamp.desc()).all()
 
     # 6. Mapowanie wyników do czytelnego formatu
-    raport_list = []
+     raport_list = []
+    granted_count = 0
+    denied_count = 0
+
+    # Jedna pętla do raportu i liczenia
     for log, emp in results:
+        # Dodanie wpisu do raportu
         raport_list.append({
             "timestamp": log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
             "employee_id": log.employee_id,
             "full_name": f"{emp.first_name} {emp.last_name}",
             "email": emp.email,
             "status": log.status,
-            
         })
+
+        # Zliczanie
+        if log.status == 'granted':
+            granted_count += 1
+        elif log.status == 'denied':
+            denied_count += 1
+
+    # Obliczenie procentów (zabezpieczenie przed dzieleniem przez zero)
+    total_count = len(results)
+    
+    if total_count > 0:
+        granted_percent = round((granted_count / total_count) * 100, 2)
+        denied_percent = round((denied_count / total_count) * 100, 2)
+    else:
+        granted_percent = 0
+        denied_percent = 0
+
+    stats_list = [
+        {
+            "type": 'granted',
+            "percent": granted_percent
+        },
+        {
+            "type": 'denied',
+            "percent": denied_percent
+        }
+    ]
 
     return jsonify({
         "status": "success",
@@ -133,6 +164,7 @@ def generate_raport():
             "entry_type": entry_type,
             "employee_id": employee_id
         },
+        "statistic": stats_list,
         "data": raport_list
     }), 200
-    
+
