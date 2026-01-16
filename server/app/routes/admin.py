@@ -1,5 +1,6 @@
 from datetime import datetime
 from flask import Blueprint, request, jsonify
+from sqlalchemy import func
 from app.models.access_log import AccessLog
 from app.utils.db import db
 from app.models.employee import Employee
@@ -124,7 +125,65 @@ def generate_raport():
             
         })
 
-    return jsonify({
+    # 7. Calculate employee statistics if employee_id is specified
+    employee_stats = None
+    if employee_id:
+        # Build a new query for statistics (with same date filters)
+        stats_query = db.session.query(AccessLog).filter(AccessLog.employee_id == employee_id)
+        
+        if date_from_str:
+            date_from = datetime.strptime(date_from_str, '%Y-%m-%d')
+            stats_query = stats_query.filter(AccessLog.timestamp >= date_from)
+        
+        if date_to_str:
+            date_to = datetime.strptime(date_to_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            stats_query = stats_query.filter(AccessLog.timestamp <= date_to)
+        
+        # Total entries
+        total_entries = stats_query.count()
+        
+        # Successful entries (granted)
+        successful_entries = stats_query.filter(AccessLog.status == 'granted').count()
+        
+        # Failed face verifications (QR passed but face failed)
+        # These are entries where status='denied' AND verification_method='face'
+        failed_face_verifications = stats_query.filter(
+            AccessLog.status == 'denied',
+            AccessLog.verification_method == 'face'
+        ).count()
+        
+        # Unique working days (distinct dates)
+        unique_days = db.session.query(
+            func.count(func.distinct(func.date(AccessLog.timestamp)))
+        ).filter(
+            AccessLog.employee_id == employee_id,
+            AccessLog.status == 'granted'
+        )
+        
+        if date_from_str:
+            date_from = datetime.strptime(date_from_str, '%Y-%m-%d')
+            unique_days = unique_days.filter(AccessLog.timestamp >= date_from)
+        
+        if date_to_str:
+            date_to = datetime.strptime(date_to_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            unique_days = unique_days.filter(AccessLog.timestamp <= date_to)
+        
+        unique_days_count = unique_days.scalar() or 0
+        
+        # Calculate percentage of successful entries relative to total entries
+        success_percentage = 0
+        if total_entries > 0:
+            success_percentage = round((successful_entries / total_entries) * 100, 2)
+        
+        employee_stats = {
+            "total_entries": total_entries,
+            "successful_entries": successful_entries,
+            "unique_working_days": unique_days_count,
+            "failed_face_verifications": failed_face_verifications,
+            "success_percentage": success_percentage
+        }
+
+    response_data = {
         "status": "success",
         "count": len(raport_list),
         "filters": {
@@ -134,5 +193,10 @@ def generate_raport():
             "employee_id": employee_id
         },
         "data": raport_list
-    }), 200
+    }
+    
+    if employee_stats:
+        response_data["employee_stats"] = employee_stats
+    
+    return jsonify(response_data), 200
     

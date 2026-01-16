@@ -111,3 +111,82 @@ def test_generate_raport_bad_date(client, setup_admin_data):
     res = client.post('/api/admin/raport', json={"date_from": "2025/12/20"})
     assert res.status_code == 400
     assert "Invalid date format" in res.get_json()['error']
+
+def test_generate_raport_employee_stats(client):
+    """Tests employee statistics in report when employee_id is specified"""
+    with client.application.app_context():
+        # Clear database
+        db.session.query(AccessLog).delete()
+        db.session.query(Employee).delete()
+        db.session.commit()
+
+        # Create test employee
+        emp = Employee(
+            id=20, 
+            first_name="Stats", 
+            last_name="Test", 
+            email="stats.test@company.com"
+        )
+        db.session.add(emp)
+        db.session.flush()
+
+        # Create test logs
+        now = datetime.utcnow()
+        day1 = now - timedelta(days=2)
+        day2 = now - timedelta(days=1)
+        
+        # Day 1: 2 successful entries
+        db.session.add(AccessLog(
+            employee_id=emp.id,
+            status="granted",
+            verification_method="qr",
+            timestamp=day1
+        ))
+        db.session.add(AccessLog(
+            employee_id=emp.id,
+            status="granted",
+            verification_method="face",
+            timestamp=day1 + timedelta(hours=8)
+        ))
+        
+        # Day 2: 1 successful, 1 failed face verification
+        db.session.add(AccessLog(
+            employee_id=emp.id,
+            status="granted",
+            verification_method="qr",
+            timestamp=day2
+        ))
+        db.session.add(AccessLog(
+            employee_id=emp.id,
+            status="denied",
+            verification_method="face",  # QR passed but face failed
+            timestamp=day2 + timedelta(seconds=5)
+        ))
+        
+        # Today: 1 successful
+        db.session.add(AccessLog(
+            employee_id=emp.id,
+            status="granted",
+            verification_method="face",
+            timestamp=now
+        ))
+        
+        db.session.commit()
+
+    # Test report with employee_id
+    res = client.post('/api/admin/raport', json={"employee_id": 20})
+    assert res.status_code == 200
+    
+    data = res.get_json()
+    assert data['status'] == 'success'
+    assert data['count'] == 5
+    
+    # Verify employee statistics
+    assert 'employee_stats' in data
+    stats = data['employee_stats']
+    
+    assert stats['total_entries'] == 5
+    assert stats['successful_entries'] == 4
+    assert stats['unique_working_days'] == 3  # 3 different days
+    assert stats['failed_face_verifications'] == 1
+    assert stats['success_percentage'] == 80.0  # 4 successful / 5 total * 100
