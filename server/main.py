@@ -48,23 +48,23 @@ def create_app():
     migrate.init_app(app, db)
 
     # ----------------------------------------
-    # KONTEKST APLIKACJI I TWORZENIE BAZY
+    # DATABASE TABLE CREATION
     # ----------------------------------------
     with app.app_context():
-        # 1. IMPORT MODELI
-        # Ważne: Musimy zaimportować klasy ze wszystkich plików modeli,
-        # żeby SQLAlchemy wiedziało o ich istnieniu przed create_all().
+        # 1. IMPORT MODELS
+        # Important: We must import classes from all model files,
+        # so SQLAlchemy knows about their existence before create_all().
         
         from app.models.employee import Employee
         from app.models.employee_face import FaceCredential
-        from app.models.qr_code import QRCredential  # Pamiętaj, klasa nazywa się QRCredential
+        from app.models.qr_code import QRCredential  # Remember, the class is named QRCredential
         from app.models.access_log import AccessLog
         
-        # 2. TWORZENIE TABEL
-        # SQLAlchemy przeskanuje zaimportowane modele i utworzy brakujące tabele
+        # 2. TABLE CREATION
+        # SQLAlchemy will scan imported models and create missing tables
         db.create_all()
 
-        # Logowanie dla pewności
+        # Logging for confirmation
         print("-" * 50)
         print(f"Connected to DB at: {db_path}")
         print("Detected tables:", db.metadata.tables.keys())
@@ -73,7 +73,7 @@ def create_app():
     # ----------------------------------------
     # REGISTER BLUEPRINTS
     # ----------------------------------------
-    # Tu później dodasz rejestrację tras (routes), np.:
+    # You will add route registration here later, e.g.:
     from app.routes.employees import employees_bp
     from app.routes.auth import auth_bp
     from app.routes.admin import admin_bp
@@ -87,10 +87,10 @@ def create_app():
     # ----------------------------------------
     scheduler = BackgroundScheduler()
 
-    # Uruchamiaj scheduler tylko gdy NIE jesteśmy w trybie TESTING
+    # Run scheduler only when NOT in TESTING mode
     if not app.config.get("TESTING", False):
         def _cleanup_job():
-            """Job: czyszczenie wygasłych i nieaktywnych QR"""
+            """Job: cleaning expired and inactive QR codes every 24 hours."""
             with app.app_context():
                 try:
                     refreshed = refresh_expired_qr_codes()
@@ -98,7 +98,7 @@ def create_app():
                 except Exception as e:
                     print(f"[QR Cleanup Job] Error: {str(e)}")
 
-        # Dodaj job: uruchamiaj co 24 godziny
+        # Add job: run every 24 hours
         scheduler.add_job(
             _cleanup_job,
             'interval',
@@ -107,11 +107,11 @@ def create_app():
             replace_existing=True
         )
 
-        # Uruchom scheduler
+        # Start scheduler
         scheduler.start()
         print("[Scheduler] Started QR cleanup job (every 24h)")
 
-        # Zamknij scheduler gdy aplikacja się wyłącza
+        # Shutdown scheduler when the application exits
         atexit.register(lambda: scheduler.shutdown(wait=False))
 
     return app

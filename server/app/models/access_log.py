@@ -6,11 +6,10 @@ class AccessLog(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     employee_id = db.Column(db.Integer, db.ForeignKey('employee.id'), nullable=False)
-    status = db.Column(db.String(50), nullable=False)  # 'granted' lub 'denied'
-    verification_method = db.Column(db.String(50), nullable=False)  # 'face' lub 'qr'
+    status = db.Column(db.String(50), nullable=False)  
+    verification_method = db.Column(db.String(50), nullable=False)  
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     
-    # Relacja z Employee
     employee = db.relationship('Employee', backref='access_logs')
     
     def __repr__(self):
