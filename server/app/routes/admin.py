@@ -113,7 +113,7 @@ def generate_raport():
     results = query.order_by(AccessLog.timestamp.desc()).all()
 
     # 6. Mapowanie wyników do czytelnego formatu
-     raport_list = []
+    raport_list = []
     granted_count = 0
     denied_count = 0
 

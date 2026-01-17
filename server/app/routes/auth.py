@@ -163,7 +163,8 @@ def verify_face_only():
             log = AccessLog(
                 employee_id=employee_id,
                 status="denied",
-                verification_method="face"
+                verification_method="face",
+                image = image_input_base64
             )
             db.session.add(log)
             db.session.commit()

@@ -9,7 +9,7 @@ class AccessLog(db.Model):
     status = db.Column(db.String(50), nullable=False)  # 'granted' lub 'denied'
     verification_method = db.Column(db.String(50), nullable=False)  # 'face' lub 'qr'
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    
+    image =  db.Column(db.LargeBinary, nullable=True)
     # Relacja z Employee
     employee = db.relationship('Employee', backref='access_logs')
     
