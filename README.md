@@ -1,57 +1,56 @@
-## Instrukcje deweloperskie 
+## Developer Instructions
 
-**Zalecany Python:** Używaj Python 3.11 do pracy deweloperskiej i uruchamiania lokalnego. Plik `server/requirements.txt` zawiera wersje (m.in. `SQLAlchemy==2.0.25`), które mogą być niezgodne z Pythonem 3.14.
+**Recommended Python:** Use Python 3.11 for development work and local execution. The `server/requirements.txt` file contains versions (including `SQLAlchemy==2.0.25`) that may be incompatible with Python 3.14.
 
-- **Wymagania projektu:** znajdziesz w `server/requirements.txt`.
+- **Project requirements:** found in `server/requirements.txt`.
 
-**Utworzenie i użycie wirtualnego środowiska (PowerShell)**:
+**Creating and using a virtual environment (PowerShell)**:
 
 ```powershell
-# przejdź do katalogu serwera
+# Navigate to the server directory
 cd .\server
 
-# jeśli masz zainstalowany Python 3.11 jako konkretny egzemplarz:
+# If you have Python 3.11 installed as a specific instance:
 & C:/Users/Fisher/AppData/Local/Programs/Python/Python311/python.exe -m venv .venv
 
-# alternatywnie, gdy korzystasz z py launcher:
+# Alternatively, when using the py launcher:
 py -3.11 -m venv .venv
 
-# zezwól na uruchamianie skryptów w tej sesji (jeśli potrzeba)
+# Allow running scripts in this session (if needed)
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
 
-# aktywuj środowisko
+# Activate the environment
 .\.venv\Scripts\Activate.ps1
 
-# zaktualizuj pip i zainstaluj zależności
+# Update pip and install dependencies
 python -m pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 ```
 
-**Uruchamianie serwera Flask (opcje)**:
+**Running the Flask server (options)**:
 
-- Preferowane (Flask CLI) — uruchom z katalogu `server` z aktywowanym venv:
+- Preferred (Flask CLI) — run from the `server` directory with activated venv:
 
 ```powershell
 flask run --host=0.0.0.0
 
-# lub jawnie ustaw fabrykę aplikacji
+# Or explicitly set the application factory
 $env:FLASK_APP = "main:create_app"
 flask run --host=0.0.0.0
 ```
 
-- Alternatywnie uruchom bezpośrednio:
+- Alternatively run directly:
 
 ```powershell
 python main.py
 ```
 
-**Uwagi i rozwiązywanie problemów**:
+**Notes and troubleshooting**:
 
-- Jeżeli pojawi się błąd "Failed to find Flask application or factory in module 'app'", upewnij się, że uruchamiasz polecenie z katalogu `server` (aby `main.py` był importowalny), albo ustaw `FLASK_APP` na `main:create_app` jak wyżej.
-- Jeśli `pip install -r requirements.txt` zakończy się błędem przy kompilacji natywnych modułów (np. biblioteki face recognition), skomentuj opcjonalne pozycje w `server/requirements.txt` i uruchom instalację ponownie.
-- Aby sprawdzić zainstalowane wersje wewnątrz venv:
+- If you get an error "Failed to find Flask application or factory in module 'app'", make sure you're running the command from the `server` directory (so that `main.py` is importable), or set `FLASK_APP` to `main:create_app` as above.
+- If `pip install -r requirements.txt` fails when compiling native modules (e.g., face recognition libraries), comment out optional items in `server/requirements.txt` and run the installation again.
+- To check installed versions inside venv:
 
 ```powershell
 python -c "import sqlalchemy, flask_sqlalchemy; print('SQLAlchemy', sqlalchemy.__version__); print('Flask_SQLAlchemy', flask_sqlalchemy.__version__)"
 ```
-

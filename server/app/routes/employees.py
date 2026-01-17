@@ -7,18 +7,20 @@ from app.models.employee_face import FaceCredential
 from app.models.qr_code import QRCredential
 from app.services.face_service import FaceServices
 from app.services.qr_service import QRService
-from app.utils.helpers import get_next_available_id
+from app.utils.helpers import  get_next_available_id
+
+MIN_NAME_LEN = 3
+MAX_EMAIL_LEN = 300
 
 employees_bp = Blueprint('employees', __name__)
 
 @employees_bp.route('/register', methods=['POST'])
 def register_employee():
     """
-    Rejestracja pracownika.
-    Zapisuje dane osobowe, Encoding twarzy ORAZ Zdjęcie (jako BLOB) w bazie.
+    Registers a new employee with biometric data.
     """
     if not request.is_json:
-        return jsonify({"error": "Wymagany format JSON"}), 400
+        return jsonify({"error": "JSON format required"}), 400
     
     data = request.get_json()
     first_name = data.get('first_name')
@@ -51,7 +53,7 @@ def register_employee():
     except Exception as e:
         return jsonify({"error": f"Image processing error: {str(e)}"}), 500
 
-    # --- ZAPIS DO BAZY ---
+    # Database operations
     try:
         new_id = get_next_available_id()
         qr_code_data, expires_at = QRService.generate_credential()
@@ -102,7 +104,7 @@ def register_employee():
 
 @employees_bp.route('/all', methods=['GET'])
 def get_all_employees():
-    """Pobiera listę wszystkich pracowników"""
+    """Retrieves a list of all employees with their QR code info."""
     employees = Employee.query.all()
     return jsonify([{
         "id": emp.id,
@@ -119,7 +121,7 @@ def get_all_employees():
 
 @employees_bp.route('/<int:employee_id>/delete', methods=['DELETE'])
 def delete_employee(employee_id):
-    """Usuwa pracownika i jego dane biometryczne"""
+    """Deletes an employee and their biometric data."""
     employee = Employee.query.get(employee_id)
     if not employee:
         return jsonify({"error": "Employee not found"}), 404
@@ -130,7 +132,7 @@ def delete_employee(employee_id):
 
 @employees_bp.route('/<int:employee_id>/generate_new_qr_code', methods=['POST'])
 def generate_new_qr_code(employee_id):
-    """Generuje całkowicie nowy QR dla pracownika"""
+    """Generates a completely new QR code for the employee, replacing the old one."""
 
     employee = Employee.query.get(employee_id)
     if not employee:
@@ -157,7 +159,7 @@ def generate_new_qr_code(employee_id):
     
 @employees_bp.route('/<int:employee_id>/switch_qr_state', methods=['POST'])
 def switch_qr_state(employee_id):
-    """Zmienia stan aktywności kodu QR dla danego pracownika"""
+    """Activates or deactivates the employee's QR code."""
     
     data = request.get_json()
     is_active = data.get('is_active')
@@ -182,9 +184,9 @@ def switch_qr_state(employee_id):
 
 @employees_bp.route('/<int:employee_id>/modify_employee', methods=['PUT'])
 def modify_employee(employee_id):
-    """Modyfikuje dane pracownika"""
+    """Modifies employee data."""
     if not request.is_json:
-        return jsonify({"error": "Wymagany format JSON"}), 400
+        return jsonify({"error": "JSON format required"}), 400
     
     data = request.get_json()
     first_name = data.get('first_name')

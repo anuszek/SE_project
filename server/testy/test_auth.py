@@ -5,10 +5,10 @@ from app.models.employee_face import FaceCredential # <--- Import potrzebny do s
 
 def test_full_auth_flow_success(client):
     """
-    Testuje pełny proces: 
-    1. Rejestracja -> 2. Weryfikacja QR -> 3. Weryfikacja Twarzy -> 4. SPRAWDZENIE AKTUALIZACJI BAZY (Dynamiczne zdjęcie)
+    Test successful authentication flow:
+    1. Registration -> 2. QR Verification -> 3. Face Verification
     """
-    # --- 1. REJESTRACJA ---
+    # --- 1. REGISTRATION ---
     fake_encoding = np.zeros(128, dtype=np.float64)
     with patch('app.services.face_service.FaceServices.get_encoding_from_image') as m_enc, \
          patch('app.services.face_service.FaceServices.encoding_to_bytes') as m_bytes, \
@@ -26,7 +26,7 @@ def test_full_auth_flow_success(client):
         assert reg_res.status_code == 201
         qr_code = reg_res.get_json()['qr_code']
 
-    # --- 2. WERYFIKACJA QR ---
+    # --- 2. QR VERIFICATION ---
     with patch('app.services.qr_service.QRService.validate_qr_code') as m_qr_val:
         m_qr_val.return_value = True
         
@@ -34,7 +34,7 @@ def test_full_auth_flow_success(client):
         assert qr_res.status_code == 200
         emp_id = qr_res.get_json()['employee_id']
 
-    # --- 3. WERYFIKACJA TWARZY (Z AKTUALIZACJĄ DANYCH) ---
+    # --- 3. FACE VERIFICATION ---
     with patch('app.services.face_service.FaceServices.get_encoding_from_image') as m_get, \
          patch('app.services.face_service.FaceServices.compare_faces') as m_comp, \
          patch('app.services.face_service.FaceServices.encoding_to_bytes') as m_bytes_update, \
@@ -64,16 +64,17 @@ def test_full_auth_flow_success(client):
             assert face_cred.created_at_addidional_1 is not None
 
 def test_verify_qr_invalid(client):
-    """Testuje odrzucenie błędnego kodu QR."""
+    """Tests rejection of invalid QR code."""
     response = client.post('/api/auth/qr', json={'qr_code': 'invalid_code_xyz'})
     assert response.status_code == 401
     assert "denied" in response.get_json()['status']
 
 def test_verify_face_mismatch(client):
     """
-    Testuje sytuację, gdy pracownik istnieje, ale biometria nie pasuje.
+    Tests the situation where the employee exists but the biometrics do not match.
+    We use registration inside the test to have the correct ID.
     """
-    # 1. NAJPIERW REJESTRUJEMY PRACOWNIKA
+    # 1. FIRST, REGISTER THE EMPLOYEE (to avoid 404 error)
     with patch('app.services.face_service.FaceServices.get_encoding_from_image') as m_enc, \
          patch('app.services.face_service.FaceServices.encoding_to_bytes') as m_bytes:
         
@@ -85,17 +86,17 @@ def test_verify_face_mismatch(client):
             'email': 'mismatch.test@example.com', 'image': 'data:image/jpeg;base64,AAA='
         })
         assert reg_resp.status_code == 201
-        emp_id = reg_resp.get_json()['employee_id'] 
+        emp_id = reg_resp.get_json()['employee_id'] # We get the ACTUAL ID
 
-    # 2. SYMULUJEMY BRAK DOPASOWANIA TWARZY
+    # 2. WE TRY VERIFICATION FOR THIS ID, BUT SIMULATE FACE MISMATCH
     with patch('app.services.face_service.FaceServices.get_encoding_from_image') as m_get, \
          patch('app.services.face_service.FaceServices.compare_faces') as m_comp:
         
-        m_get.return_value = np.ones(128) 
-        m_comp.return_value = False # Brak dopasowania
+        m_get.return_value = np.ones(128) # Different face vector
+        m_comp.return_value = False      # SIMULATION: Face does not match!
         
         payload = {
-            'employee_id': emp_id,
+            'employee_id': emp_id, # Using ID from step 1
             'image': 'data:image/jpeg;base64,AAA='
         }
         response = client.post('/api/auth/face', json=payload)
@@ -104,7 +105,7 @@ def test_verify_face_mismatch(client):
     assert response.get_json()['status'] == 'denied'
 
 def test_verify_qr_endpoint_logic(client, app):
-    """Testuje integrację endpointu QR bezpośrednio z bazą danych."""
+    """Tests direct integration of the QR endpoint with the database."""
     with app.app_context():
         from app.models.employee import Employee
         from app.models.qr_code import QRCredential

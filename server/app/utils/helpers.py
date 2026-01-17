@@ -9,11 +9,11 @@ from app.services.qr_service import QRService
 def get_next_available_id():
     min_id = db.session.query(func.min(Employee.id)).scalar()
 
-    # jeśli pusta
+    # if empty
     if min_id is None or min_id >1:
         return 1
     
-    # dziura-> alisay
+    # gap -> alias
 
     e1 = db.aliased(Employee)
     e2 = db.aliased(Employee)
@@ -30,18 +30,18 @@ def get_next_available_id():
 
 def refresh_expired_qr_codes(valid_weeks: int = 4):
     """
-    Odświerza tylko wygasłe wpisy QR dla wszystkich pracowników.
-    Nadpisuje stary kod nowym.
+    Refreshes only expired QR entries for all employees.
+    Overwrites the old code with a new one.
     
     Args:
-        valid_weeks: Liczba tygodni ważności nowego QR
+        valid_weeks: Number of weeks the new QR is valid
     
-    Zwraca listę wygenerowanych pozycji: [{"employee_id","new_qr","expires_at"}, ...]
+    Returns a list of generated entries: [{"employee_id","new_qr","expires_at"}, ...]
     """
     now = datetime.utcnow()
     results = []
     try:
-        # Znajdź pracowników z wygasłymi kodami
+        # Find employees with expired codes
         expired = QRCredential.query.filter(
             QRCredential.expires_at != None,
             QRCredential.expires_at < now,
@@ -49,7 +49,7 @@ def refresh_expired_qr_codes(valid_weeks: int = 4):
         ).all()
 
         for qr in expired:
-            # Nadpisz stary kod nowym
+            # Overwrite old code with new one
             new_code, new_exp = QRService.generate_credential(valid_weeks)
             qr.qr_code_data = new_code
             qr.expires_at = new_exp
