@@ -7,15 +7,15 @@ class FaceServices:
     
     @staticmethod
     def get_encoding_from_image(file_storage):
-        """Retrieves file, finds face and returns encoding."""
-        # Load the image
+        """
+        Retrieves file, finds face and returns encoding.
+        """
         image = face_recognition.load_image_file(file_storage)
         face_locations = face_recognition.face_locations(image)
         
         if len(face_locations) == 0:
             return None 
-        
-        # Return encoding of the first face
+
         return face_recognition.face_encodings(image, face_locations)[0]
 
     @staticmethod
@@ -24,7 +24,6 @@ class FaceServices:
         Converts a Base64 string to a file-like object.
         This is probably the missing method!
         """
-        # Remove "data:image/jpeg;base64," header if present
         if "," in base64_string:
             header, encoded = base64_string.split(",", 1)
         else:
@@ -38,18 +37,20 @@ class FaceServices:
 
     @staticmethod
     def encoding_to_bytes(encoding_np):
-        """Konwertuje numpy array na bajty (do zapisu w bazie)."""
+        """
+        Converts a NumPy array encoding to bytes for database storage.
+        """
         return encoding_np.tobytes()
 
     @staticmethod
     def get_image_bytes(file_storage):
         """
-        Pobiera surowe bajty z pliku zdjęcia.
-        Kluczowe dla zapisu BLOB w bazie danych.
+        Retrieves raw bytes from an image file, essential for BLOB storage in the database.
         """
+ 
         file_storage.seek(0)
         data = file_storage.read()
-        file_storage.seek(0) # Reset wskaźnika, aby można było użyć pliku ponownie
+        file_storage.seek(0) 
         return data
 
     @staticmethod

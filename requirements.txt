@@ -4,20 +4,20 @@ SQLAlchemy==2.0.45
 Flask-Migrate
 Flask-CORS
 
-# Ważne dla Python 3.12+ (naprawia błędy importu w starszych bibliotekach)
+# Important for Python 3.12+ (fixes import errors in older libraries)
 setuptools
 
-# Przetwarzanie obrazu
+# Image processing
 numpy
 opencv-python
 
-# Biblioteki C++ (nie przypinamy wersji dla WSL, niech pip sam dobierze)
+# C++ libraries (do not pin version for WSL, let pip choose)
 dlib
 
-# Modele AI (pobierane bezpośrednio z GitHuba)
+# AI models (downloaded directly from GitHub)
 face_recognition_models @ git+https://github.com/ageitgey/face_recognition_models
 
-# Główna biblioteka
+# Main library
 face_recognition
 pytest
 

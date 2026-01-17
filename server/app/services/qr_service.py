@@ -9,6 +9,9 @@ class QRService:
 
     @staticmethod
     def generate_credential(valid_weeks: int = 4):
+        """
+        Generates a unique QR code data and its expiration date.
+        """
 
         qr_code_data = str(uuid.uuid4())
 
@@ -17,6 +20,9 @@ class QRService:
     
     @staticmethod
     def validate_qr_code(qr_code_data: str):
+        """
+        Validates the provided QR code data.
+        """
 
         if not qr_code_data:
             return False

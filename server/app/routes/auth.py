@@ -12,6 +12,9 @@ auth_bp= Blueprint('auth', __name__)
 
 @auth_bp.route('/qr', methods=['POST'])
 def verify_qr_only():
+    """
+    Verifies the provided QR code data.
+    """
     if not request.is_json:
         return jsonify({"error": "JSON format required"}), 400
     
@@ -21,7 +24,6 @@ def verify_qr_only():
     if not qr_code_data:
         return jsonify({'error': 'QR code is required'}), 400
     
-    # 1. Check if the QR code exists and is active
     qr_record = QRCredential.query.filter_by(qr_code_data=qr_code_data).first()
     
     if not qr_record or not QRService.validate_qr_code(qr_code_data):
@@ -42,13 +44,11 @@ def verify_qr_only():
             "message": "Invalid or expired QR code."
         }), 401
 
-    # Retrieve employee data
     employee = Employee.query.get(qr_record.employee_id)
     
     if not employee:
         return jsonify({"error": "Data consistency error: no employee found for this code"}), 500
 
-    # Return success and employee ID so the frontend knows who to verify the face for
     try:
         log = AccessLog(
             employee_id=employee.id,
@@ -69,6 +69,9 @@ def verify_qr_only():
 
 @auth_bp.route('/face', methods=['POST'])
 def verify_face_only():
+    """
+    Verifies the provided face image against stored face encodings.
+    """
     if not request.is_json:
         return jsonify({"error": "JSON format required"}), 400
     
@@ -79,18 +82,14 @@ def verify_face_only():
     if not image_input_base64 or not employee_id:
         return jsonify({'error': 'Image or employee ID is required'}), 400
 
-    # 1. Retrieve face pattern for the given employee ID
     face_record = FaceCredential.query.filter_by(employee_id=employee_id).first()
     
     if not face_record:
-        # You can return 404 or 400 here, depending on the logic (e.g., employee has QR but no face scan)
         return jsonify({"error": "No face pattern found for this employee"}), 404
 
-    # 2. Process the uploaded image
     try:
         image_stream = FaceServices.handle_base64_image(image_input_base64)
         
-        # Obliczamy encoding z przesłanego zdjęcia
         uploaded_encoding = FaceServices.get_encoding_from_image(image_stream)
 
         if uploaded_encoding is None:
@@ -99,48 +98,37 @@ def verify_face_only():
                 "message": "No face detected in the uploaded image"
             }), 400
         
-        # Pobieramy też surowe bajty zdjęcia (potrzebne do zapisu w bazie, jeśli weryfikacja się uda)
         uploaded_image_bytes = FaceServices.get_image_bytes(image_stream)
             
     except Exception as e:
         return jsonify({"error": f"Image processing error: {str(e)}"}), 500
 
     
-    # 3. Weryfikacja wieloetapowa (Główne -> Slot 1 -> Slot 2)
     is_match = False
     
-    # A. Sprawdź zdjęcie GŁÓWNE
     if FaceServices.compare_faces(face_record.face_encoding, uploaded_encoding):
         is_match = True
     
-    # B. Jeśli nie pasuje, sprawdź SLOT 1 (jeśli istnieje)
     elif face_record.face_encoding_addidional_1 is not None:
         if FaceServices.compare_faces(face_record.face_encoding_addidional_1, uploaded_encoding):
             is_match = True
             
-    # C. Jeśli dalej nie pasuje, sprawdź SLOT 2 (jeśli istnieje)
     elif face_record.face_encoding_addidional_2 is not None:
         if FaceServices.compare_faces(face_record.face_encoding_addidional_2, uploaded_encoding):
             is_match = True
 
-    # 4. Obsługa wyniku
     if is_match:
         employee = Employee.query.get(employee_id)
 
-        # --- DYNAMICZNA AKTUALIZACJA TWARZY ---
         try:
-            # Konwertujemy encoding na bajty dla bazy
             new_encoding_bytes = FaceServices.encoding_to_bytes(uploaded_encoding)
             
-            # Wywołujemy metodę modelu (logika: puste miejsce lub najstarsze)
             update_msg = face_record.register_dynamic_entry(new_encoding_bytes, uploaded_image_bytes)
             print(f"[INFO] Face update: {update_msg}")
             
         except Exception as e:
             print(f"[WARNING] Failed to update dynamic face data: {e}")
-            # Nie przerywamy logowania, bo pracownik został rozpoznany
 
-        # Logowanie wejścia
         try:
             log = AccessLog(
                 employee_id=employee_id,
@@ -148,7 +136,7 @@ def verify_face_only():
                 verification_method="face"
             )
             db.session.add(log)
-            db.session.commit() # Commit zatwierdzi też zmiany w face_credential
+            db.session.commit()
         except Exception as log_error:
             print(f"[WARNING] Failed to log access: {log_error}")
             db.session.rollback()
@@ -159,7 +147,6 @@ def verify_face_only():
             "employee_id": employee.id
         }), 200
     else:
-        # Logowanie odmowy
         try:
             log = AccessLog(
                 employee_id=employee_id,
