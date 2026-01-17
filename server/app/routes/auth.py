@@ -74,7 +74,7 @@ def verify_face_only():
     
     data = request.get_json()
     image_input_base64 = data.get('image')
-    employee_id = data.get('employee_id') # To musimy dostać z frontendu (wynik poprzedniego requestu)
+    employee_id = data.get('employee_id')
 
     if not image_input_base64 or not employee_id:
         return jsonify({'error': 'Image or employee ID is required'}), 400
@@ -89,6 +89,8 @@ def verify_face_only():
     # 2. Process the uploaded image
     try:
         image_stream = FaceServices.handle_base64_image(image_input_base64)
+        
+        # Obliczamy encoding z przesłanego zdjęcia
         uploaded_encoding = FaceServices.get_encoding_from_image(image_stream)
 
         if uploaded_encoding is None:
@@ -96,16 +98,49 @@ def verify_face_only():
                 "status": "denied", 
                 "message": "No face detected in the uploaded image"
             }), 400
+        
+        # Pobieramy też surowe bajty zdjęcia (potrzebne do zapisu w bazie, jeśli weryfikacja się uda)
+        uploaded_image_bytes = FaceServices.get_image_bytes(image_stream)
             
     except Exception as e:
         return jsonify({"error": f"Image processing error: {str(e)}"}), 500
 
     
-    is_match = FaceServices.compare_faces(face_record.face_encoding, uploaded_encoding)
+    # 3. Weryfikacja wieloetapowa (Główne -> Slot 1 -> Slot 2)
+    is_match = False
     
+    # A. Sprawdź zdjęcie GŁÓWNE
+    if FaceServices.compare_faces(face_record.face_encoding, uploaded_encoding):
+        is_match = True
+    
+    # B. Jeśli nie pasuje, sprawdź SLOT 1 (jeśli istnieje)
+    elif face_record.face_encoding_addidional_1 is not None:
+        if FaceServices.compare_faces(face_record.face_encoding_addidional_1, uploaded_encoding):
+            is_match = True
+            
+    # C. Jeśli dalej nie pasuje, sprawdź SLOT 2 (jeśli istnieje)
+    elif face_record.face_encoding_addidional_2 is not None:
+        if FaceServices.compare_faces(face_record.face_encoding_addidional_2, uploaded_encoding):
+            is_match = True
+
+    # 4. Obsługa wyniku
     if is_match:
         employee = Employee.query.get(employee_id)
 
+        # --- DYNAMICZNA AKTUALIZACJA TWARZY ---
+        try:
+            # Konwertujemy encoding na bajty dla bazy
+            new_encoding_bytes = FaceServices.encoding_to_bytes(uploaded_encoding)
+            
+            # Wywołujemy metodę modelu (logika: puste miejsce lub najstarsze)
+            update_msg = face_record.register_dynamic_entry(new_encoding_bytes, uploaded_image_bytes)
+            print(f"[INFO] Face update: {update_msg}")
+            
+        except Exception as e:
+            print(f"[WARNING] Failed to update dynamic face data: {e}")
+            # Nie przerywamy logowania, bo pracownik został rozpoznany
+
+        # Logowanie wejścia
         try:
             log = AccessLog(
                 employee_id=employee_id,
@@ -113,9 +148,10 @@ def verify_face_only():
                 verification_method="face"
             )
             db.session.add(log)
-            db.session.commit()
+            db.session.commit() # Commit zatwierdzi też zmiany w face_credential
         except Exception as log_error:
             print(f"[WARNING] Failed to log access: {log_error}")
+            db.session.rollback()
 
         return jsonify({
             "status": "granted",
@@ -123,12 +159,13 @@ def verify_face_only():
             "employee_id": employee.id
         }), 200
     else:
-
+        # Logowanie odmowy
         try:
             log = AccessLog(
                 employee_id=employee_id,
                 status="denied",
-                verification_method="face"
+                verification_method="face",
+                image = image_input_base64
             )
             db.session.add(log)
             db.session.commit()

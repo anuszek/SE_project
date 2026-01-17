@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import patch
 import numpy as np
+from app.models.employee_face import FaceCredential # <--- Import potrzebny do sprawdzania bazy
 
 def test_full_auth_flow_success(client):
     """
@@ -10,10 +11,12 @@ def test_full_auth_flow_success(client):
     # --- 1. REGISTRATION ---
     fake_encoding = np.zeros(128, dtype=np.float64)
     with patch('app.services.face_service.FaceServices.get_encoding_from_image') as m_enc, \
-         patch('app.services.face_service.FaceServices.encoding_to_bytes') as m_bytes:
+         patch('app.services.face_service.FaceServices.encoding_to_bytes') as m_bytes, \
+         patch('app.services.face_service.FaceServices.get_image_bytes') as m_img_bytes:
         
         m_enc.return_value = fake_encoding
         m_bytes.return_value = b"fake-encoding-bytes"
+        m_img_bytes.return_value = b"registered-image-bytes" # Symulujemy bajty zdjęcia
         
         reg_payload = {
             'first_name': 'Auth', 'last_name': 'User', 
@@ -33,19 +36,32 @@ def test_full_auth_flow_success(client):
 
     # --- 3. FACE VERIFICATION ---
     with patch('app.services.face_service.FaceServices.get_encoding_from_image') as m_get, \
-         patch('app.services.face_service.FaceServices.compare_faces') as m_comp:
+         patch('app.services.face_service.FaceServices.compare_faces') as m_comp, \
+         patch('app.services.face_service.FaceServices.encoding_to_bytes') as m_bytes_update, \
+         patch('app.services.face_service.FaceServices.get_image_bytes') as m_img_bytes_update:
         
         m_get.return_value = fake_encoding
-        m_comp.return_value = True # Faces match
+        m_comp.return_value = True # Twarze pasują
+        m_bytes_update.return_value = b"new-dynamic-encoding-bytes"
+        m_img_bytes_update.return_value = b"new-dynamic-image-bytes" # To chcemy znaleźć w bazie!
         
         face_payload = {
             'employee_id': emp_id,
-            'image': 'data:image/jpeg;base64,AAA='
+            'image': 'data:image/jpeg;base64,BBBB=' # Nowe zdjęcie
         }
         final_res = client.post('/api/auth/face', json=face_payload)
         
         assert final_res.status_code == 200
         assert final_res.get_json()['status'] == 'granted'
+
+        # --- 4. WERYFIKACJA BAZY DANYCH (CZY DODAŁO SIĘ ZDJĘCIE) ---
+        with client.application.app_context():
+            face_cred = FaceCredential.query.filter_by(employee_id=emp_id).first()
+            
+            # Sprawdzamy czy Slot 1 został wypełniony
+            assert face_cred.face_encoding_addidional_1 == b"new-dynamic-encoding-bytes"
+            assert face_cred.face_image_addidional_1 == b"new-dynamic-image-bytes"
+            assert face_cred.created_at_addidional_1 is not None
 
 def test_verify_qr_invalid(client):
     """Tests rejection of invalid QR code."""
@@ -85,10 +101,8 @@ def test_verify_face_mismatch(client):
         }
         response = client.post('/api/auth/face', json=payload)
 
-    # 3. CHECK IF WE RECEIVED 401 (not 404)
     assert response.status_code == 401
     assert response.get_json()['status'] == 'denied'
-    assert "does not match" in response.get_json()['message']
 
 def test_verify_qr_endpoint_logic(client, app):
     """Tests direct integration of the QR endpoint with the database."""

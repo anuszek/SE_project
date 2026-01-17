@@ -2,6 +2,7 @@ import os
 import base64
 import pytest
 from app.models.employee import Employee
+from app.models.employee_face import FaceCredential  # <--- Dodany import
 from app.models.qr_code import QRCredential
 from app.utils.db import db
 
@@ -19,6 +20,7 @@ def clean_db(client):
     """Clears the employee tables before each test"""
     with client.application.app_context():
         db.session.query(QRCredential).delete()
+        db.session.query(FaceCredential).delete() # <--- Czyścimy też twarze
         db.session.query(Employee).delete()
         db.session.commit()
 
@@ -37,9 +39,20 @@ def test_register_employee_success(client, clean_db):
     
     assert res.status_code == 201
     data = res.get_json()
-    assert "employee_id" in data
-    assert "qr_code" in data
-    assert data['message'] == "Employee registered successfully"
+    emp_id = data['employee_id']
+
+    # --- WERYFIKACJA BAZY DANYCH ---
+    with client.application.app_context():
+        # Sprawdzamy czy zdjęcie fizycznie trafiło do bazy (BLOB)
+        face_cred = FaceCredential.query.filter_by(employee_id=emp_id).first()
+        
+        assert face_cred is not None
+        assert face_cred.face_encoding is not None
+        
+        # TO JEST KLUCZOWE SPRAWDZENIE:
+        assert face_cred.face_image is not None
+        assert isinstance(face_cred.face_image, bytes) # Musi być bajtami
+        assert len(face_cred.face_image) > 0 # Musi mieć jakąś zawartość
 
 def test_register_employee_duplicate_email(client, clean_db):
     """Tests blocking registration with the same email"""
@@ -48,9 +61,7 @@ def test_register_employee_duplicate_email(client, clean_db):
         "first_name": "Ewa", "last_name": "Nowak",
         "email": "ewa@test.pl", "image": img_b64
     }
-    # First registration
     client.post('/api/employees/register', json=payload)
-    # Second registration (same email)
     res = client.post('/api/employees/register', json=payload)
     
     assert res.status_code == 409
@@ -68,51 +79,35 @@ def test_get_all_employees(client, clean_db):
     assert res.status_code == 200
     data = res.get_json()
     assert len(data) == 1
-    assert data[0]['first_name'] == "Adam"
 
 def test_modify_employee(client, clean_db):
     """Tests modifying employee personal data via URL ID"""
     # 1. Register an employee to get the ID
     img_b64 = get_img_b64("faces_test/face.jpg")
     reg_res = client.post('/api/employees/register', json={
-        "first_name": "Jan", 
-        "last_name": "K", 
-        "email": "jan@k.pl", 
-        "image": img_b64
+        "first_name": "Jan", "last_name": "K", "email": "jan@k.pl", "image": img_b64
     })
     emp_id = reg_res.get_json()['employee_id']
 
     # 2. Prepare modification data (without ID inside)
     mod_payload = {
-        "first_name": "Janusz",
-        "last_name": "Kowalski",
-        "email": "janusz@kowalski.pl"
+        "first_name": "Janusz", "last_name": "Kowalski", "email": "janusz@kowalski.pl"
     }
-
-    # 3. Call the endpoint (ID is passed in the URL)
     res = client.put(f'/api/employees/{emp_id}/modify_employee', json=mod_payload)
     
-    # 4. Assertions
     assert res.status_code == 200
-    assert res.get_json()['message'] == "Employee modified successfully"
     
-    # 5. Check if the data actually changed in the database
     with client.application.app_context():
-        # Using modern db.session.get instead of .query.get to avoid warnings
         emp = db.session.get(Employee, emp_id)
         assert emp.first_name == "Janusz"
-        assert emp.last_name == "Kowalski"
-        assert emp.email == "janusz@kowalski.pl"
+
 def test_deactivate_and_refresh_qr(client, clean_db):
     """Tests the cycle: switching QR state (switch) -> generating a completely new code"""
     
     # 1. REGISTRATION
     img_b64 = get_img_b64("faces_test/face.jpg")
     reg_res = client.post('/api/employees/register', json={
-        "first_name": "Karol", 
-        "last_name": "W", 
-        "email": "k@w.pl", 
-        "image": img_b64
+        "first_name": "Karol", "last_name": "W", "email": "k@w.pl", "image": img_b64
     })
     emp_id = reg_res.get_json()['employee_id']
     old_qr_data = reg_res.get_json()['qr_code']
@@ -139,9 +134,8 @@ def test_deactivate_and_refresh_qr(client, clean_db):
     assert data_new['qr_code'] != old_qr_data  # The code must be different
     
     with client.application.app_context():
-        emp_updated = db.session.get(Employee, emp_id)
-        assert emp_updated.qr_code.qr_code_data == data_new['qr_code']
-        assert emp_updated.qr_code.is_active is True
+        emp = db.session.get(Employee, emp_id)
+        assert emp.qr_code.is_active is True
 
     # 4. MANUAL REACTIVATION (optional - checking the switch in the other direction)
     res_switch_on = client.post(

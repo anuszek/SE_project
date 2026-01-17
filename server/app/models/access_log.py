@@ -9,6 +9,7 @@ class AccessLog(db.Model):
     status = db.Column(db.String(50), nullable=False)  
     verification_method = db.Column(db.String(50), nullable=False)  
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    image =  db.Column(db.LargeBinary, nullable=True)
     
     employee = db.relationship('Employee', backref='access_logs')
     

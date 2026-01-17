@@ -31,40 +31,34 @@ def register_employee():
     if not first_name or not last_name or not email or not image_base64:
         return jsonify({'error': 'Missing required fields'}), 400
     
-    # Validation Regex
-    # email_pattern = r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
-    # name_pattern = r"^[A-Za-z0-9_.'-]+$"
-
-    # if (
-    #     not re.match(email_pattern, email) or
-    #     not re.match(name_pattern, first_name) or
-    #     not re.match(name_pattern, last_name) or
-    #     len(email) > MAX_EMAIL_LEN or
-    #     len(first_name) < MIN_NAME_LEN or
-    #     len(last_name) < MIN_NAME_LEN
-    # ):
-    #     return jsonify({"message": "Invalid data format"}), 400
-
-    # Image processing
+    # --- PRZETWARZANIE ZDJĘCIA ---
     try:
+        # 1. Konwersja Base64 -> Stream
         image_stream = FaceServices.handle_base64_image(image_base64)
         if image_stream is None:
              return jsonify({"error": "Invalid Base64 image"}), 400
 
+        # 2. Wykrywanie twarzy i obliczanie encodingu
         face_encoding_np = FaceServices.get_encoding_from_image(image_stream)
         if face_encoding_np is None:
             return jsonify({"error": "No face detected"}), 400
         
+        # 3. Konwersja Encodingu na bajty (do bazy)
         face_bytes = FaceServices.encoding_to_bytes(face_encoding_np)
 
+        # 4. Pobranie surowych bajtów zdjęcia (do bazy - kolumna face_image)
+        # Metoda get_image_bytes resetuje wskaźnik pliku, więc jest bezpieczna
+        image_blob = FaceServices.get_image_bytes(image_stream)
+
     except Exception as e:
-        return jsonify({"error": f"Image error: {str(e)}"}), 500
+        return jsonify({"error": f"Image processing error: {str(e)}"}), 500
 
     # Database operations
     try:
         new_id = get_next_available_id()
         qr_code_data, expires_at = QRService.generate_credential()
 
+        # 1. Pracownik
         new_employee = Employee(
             id=new_id,   
             first_name=first_name,
@@ -72,16 +66,18 @@ def register_employee():
             email=email
         )
         db.session.add(new_employee)
-        db.session.flush()
+        db.session.flush() # Żeby uzyskać ID pracownika
 
+        # 2. Dane Biometryczne (Encoding + Zdjęcie)
         new_face = FaceCredential(
             employee_id=new_employee.id, 
-            face_encoding=face_bytes,
-            face_image_path="memory"
+            face_encoding=face_bytes,  # Encoding (matematyczny opis)
+            face_image=image_blob      # Fizyczne zdjęcie (bajty)
         )
         db.session.add(new_face)
         db.session.flush()
 
+        # 3. Kod QR
         new_qr = QRCredential(
             employee_id=new_employee.id,
             qr_code_data=qr_code_data,
@@ -89,6 +85,8 @@ def register_employee():
             is_active=True
         )
         db.session.add(new_qr)
+        
+        # Zatwierdzenie wszystkiego
         db.session.commit()
 
         return jsonify({
@@ -213,4 +211,4 @@ def modify_employee(employee_id):
         return jsonify({"error": "Email already exists"}), 409
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500    
+        return jsonify({"error": str(e)}), 500

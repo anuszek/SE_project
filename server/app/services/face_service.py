@@ -31,16 +31,26 @@ class FaceServices:
             encoded = base64_string
 
         try:
-            # Decode text to bytes
             image_data = base64.b64decode(encoded)
-            # Return as "in-memory file"
             return io.BytesIO(image_data)
         except Exception:
             return None
 
     @staticmethod
     def encoding_to_bytes(encoding_np):
+        """Konwertuje numpy array na bajty (do zapisu w bazie)."""
         return encoding_np.tobytes()
+
+    @staticmethod
+    def get_image_bytes(file_storage):
+        """
+        Pobiera surowe bajty z pliku zdjęcia.
+        Kluczowe dla zapisu BLOB w bazie danych.
+        """
+        file_storage.seek(0)
+        data = file_storage.read()
+        file_storage.seek(0) # Reset wskaźnika, aby można było użyć pliku ponownie
+        return data
 
     @staticmethod
     def compare_faces(known_encoding_bytes, unknown_encoding_np, tolerance=0.6):
