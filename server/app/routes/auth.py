@@ -88,7 +88,7 @@ def verify_face_only():
                 log = AccessLog(
                     employee_id=employee_id,
                     status="denied",
-                    verification_method="QR + Face",
+                    verification_method="Face",
                     image = uploaded_image_bytes
                 )
                 db.session.add(log)
@@ -153,7 +153,7 @@ def verify_face_only():
             log = AccessLog(
                 employee_id=employee_id,
                 status="denied",
-                verification_method="QR + Face",
+                verification_method="Face",
                 image = uploaded_image_bytes
             )
             db.session.add(log)
