@@ -91,6 +91,23 @@ def create_app():
             id='cleanup_qr_job',
             replace_existing=True
         )
+        
+        def _clear_logs_job():
+            """Job: clearing expired access logs every 24 hours."""
+            with app.app_context():
+                try:
+                    deleted = clear_expired_logs()
+                    print(f"[Log Cleanup Job] Deleted: {deleted} old logs")
+                except Exception as e:
+                    print(f"[Log Cleanup Job] Error: {str(e)}")
+
+        scheduler.add_job(
+            _clear_logs_job,
+            'interval',
+            hours=24,
+            id='clear_logs_job',
+            replace_existing=True
+        )
 
         scheduler.start()
         print("[Scheduler] Started QR cleanup job (every 24h)")

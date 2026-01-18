@@ -1,6 +1,6 @@
 from sqlalchemy import func
 from sqlalchemy.orm import aliased
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.utils.db import db
 from app.models.employee import Employee
 from app.models.qr_code import QRCredential
@@ -28,7 +28,7 @@ def get_next_available_id():
         max_id = db.session.query(func.max(Employee.id)).scalar()
         return max_id + 1
 
-def refresh_expired_qr_codes(valid_weeks: int = 4):
+def refresh_expired_qr_codes(valid_minutes: int = 3600):
     """
     Refreshes only expired QR entries for all employees.
     Overwrites the old code with a new one.
@@ -43,7 +43,7 @@ def refresh_expired_qr_codes(valid_weeks: int = 4):
         ).all()
 
         for qr in expired:
-            new_code, new_exp = QRService.generate_credential(valid_weeks)
+            new_code, new_exp = QRService.generate_credential(valid_minutes)
             qr.qr_code_data = new_code
             qr.expires_at = new_exp
             db.session.add(qr)
@@ -59,3 +59,16 @@ def refresh_expired_qr_codes(valid_weeks: int = 4):
         raise
 
     return results
+
+def clear_expired_logs(retention_months: int = 6):
+    """
+    Deletes access logs older than retention_months.
+    """
+    cutoff_date = datetime.utcnow() - timedelta(days=retention_months*30)
+    try:
+        deleted = AccessLog.query.filter(AccessLog.timestamp < cutoff_date).delete()
+        db.session.commit()
+        return deleted
+    except Exception:
+        db.session.rollback()
+        raise
