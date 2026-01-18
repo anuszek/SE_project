@@ -120,3 +120,48 @@
   border-radius: var(--radius-md);
   margin-bottom: 20px;
 }
+
+/* Employee Stats Table */
+.employee-stats-panel {
+  background: var(--color-container-background);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.stats-header {
+  margin-bottom: 15px;
+}
+
+.stats-header h3 {
+  margin: 0;
+  color: var(--color-text-dark);
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+.stats-table th,
+.stats-table td {
+  padding: var(--spacing-md);
+  text-align: left;
+  border-bottom: var(--border-light);
+}
+
+.stats-table th {
+  font-weight: var(--font-semibold);
+  color: var(--color-text-dark);
+  font-size: var(--font-sm);
+  text-transform: uppercase;
+}
+
+.stats-table td {
+  color: var(--color-text-secondary);
+}
+
+.stats-table tbody tr:hover {
+  background-color: var(--color-background-hover);
+}
