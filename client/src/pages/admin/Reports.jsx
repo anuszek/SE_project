@@ -15,9 +15,11 @@ const Reports = () => {
   });
 
   const [reportData, setReportData] = useState([]);
+  const [employeeStats, setEmployeeStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resultCount, setResultCount] = useState(0);
+  const [showStats, setShowStats] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -39,13 +41,16 @@ const Reports = () => {
       if (filters.employee_id) payload.employee_id = filters.employee_id;
 
       const response = await getReports(payload);
-
+  
       if (response.status === "success") {
         setReportData(response.data);
+        setEmployeeStats(response.employee_stats);
         setResultCount(response.count);
+        setShowStats(!!filters.employee_id);
       }
     } catch (err) {
       setError(err.message);
+      setShowStats(false);
     } finally {
       setLoading(false);
     }
@@ -121,32 +126,34 @@ const Reports = () => {
         {error && <div className="error-message">{error}</div>}
 
         {/*Employee Stats*/}
-        <div className="employee-stats-panel">
-          <div className="stats-header">
-            <h3>Employee Statistics</h3>
-          </div>
+        {showStats && (
+          <div className="employee-stats-panel">
+            <div className="stats-header">
+              <h3>Employee Statistics</h3>
+            </div>
 
-          <table className="stats-table">
-            <thead>
-              <tr>
-                <th>Unique Working Days</th>
-                <th>Total Entries</th>
-                <th>Successful Entries</th>
-                <th>Failed Face Verifications</th>
-                <th>Successful Entries Percentage</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>0</td>
-                <td>0</td>
-                <td>0</td>
-                <td>0</td>
-                <td>0 %</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+            <table className="stats-table">
+              <thead>
+                <tr>
+                  <th>Unique Working Days</th>
+                  <th>Total Entries</th>
+                  <th>Successful Entries</th>
+                  <th>Failed Face Verifications</th>
+                  <th>Successful Entries Percentage</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{employeeStats?.unique_working_days || 0}</td>
+                  <td>{employeeStats?.total_entries || 0}</td>
+                  <td>{employeeStats?.successful_entries || 0}</td>
+                  <td>{employeeStats?.failed_face_verifications || 0}</td>
+                  <td>{employeeStats?.success_percentage || 0}%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Results Table */}
         <div className="results-panel">

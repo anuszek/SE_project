@@ -92,13 +92,26 @@ def verify_face_only():
         
         uploaded_encoding = FaceServices.get_encoding_from_image(image_stream)
 
+        uploaded_image_bytes = FaceServices.get_image_bytes(image_stream)
+
         if uploaded_encoding is None:
+            try:
+                log = AccessLog(
+                    employee_id=employee_id,
+                    status="denied",
+                    verification_method="face",
+                    image = image_stream
+                )
+                db.session.add(log)
+                db.session.commit()
+            except Exception as log_error:
+                print(f"[WARNING] Failed to log access denial: {log_error}")
+                db.session.rollback()
+        
             return jsonify({
                 "status": "denied", 
                 "message": "No face detected in the uploaded image"
             }), 400
-        
-        uploaded_image_bytes = FaceServices.get_image_bytes(image_stream)
             
     except Exception as e:
         return jsonify({"error": f"Image processing error: {str(e)}"}), 500
@@ -158,6 +171,7 @@ def verify_face_only():
             db.session.commit()
         except Exception as log_error:
             print(f"[WARNING] Failed to log access denial: {log_error}")
+            db.session.rollback()
 
         return jsonify({
             "status": "denied",

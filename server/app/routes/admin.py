@@ -1,4 +1,5 @@
 from datetime import datetime
+import base64
 from flask import Blueprint, request, jsonify
 from sqlalchemy import func
 from app.models.access_log import AccessLog
@@ -21,14 +22,23 @@ def get_access_logs():
         for log in logs:
             employee = Employee.query.get(log.employee_id) if log.employee_id else None
             
-            logs_data.append({
+            log_dict = {
                 "id": log.id,
                 "employee_id": log.employee_id,
                 "employee_name": f"{employee.first_name} {employee.last_name}" if employee else "Unknown",
                 "status": log.status,
                 "verification_method": log.verification_method,
                 "timestamp": log.timestamp.isoformat() if log.timestamp else None
-            })
+            }
+            
+            # Include image for denied face access attempts
+            if log.image:
+                img_base64 = base64.b64encode(log.image).decode('utf-8')
+                log_dict['image'] = f'data:image/jpeg;base64,{img_base64}'
+            else:
+                log_dict['image'] = None
+                
+            logs_data.append(log_dict)
         
         return jsonify({
             "success": True,
@@ -109,14 +119,23 @@ def generate_raport():
 
     raport_list = []
     for log, emp in results:
-        raport_list.append({
+        entry = {
             "timestamp": log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
             "employee_id": log.employee_id,
             "full_name": f"{emp.first_name} {emp.last_name}",
             "email": emp.email,
+            "verification_method": log.verification_method,
+            "image": None,
             "status": log.status,
+        }
+        
+        if log.image:
+            img_base64 = base64.b64encode(log.image).decode('utf-8')
+            entry['image'] = f'data:image/jpeg;base64,{img_base64}'
+        else:
+            entry['image'] = None
             
-        })
+        raport_list.append(entry)
 
     employee_stats = None
     if employee_id:
