@@ -120,6 +120,34 @@ const Reports = () => {
 
         {error && <div className="error-message">{error}</div>}
 
+        {/*Employee Stats*/}
+        <div className="employee-stats-panel">
+          <div className="stats-header">
+            <h3>Employee Statistics</h3>
+          </div>
+
+          <table className="stats-table">
+            <thead>
+              <tr>
+                <th>Unique Working Days</th>
+                <th>Total Entries</th>
+                <th>Successful Entries</th>
+                <th>Failed Face Verifications</th>
+                <th>Successful Entries Percentage</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>0</td>
+                <td>0</td>
+                <td>0</td>
+                <td>0</td>
+                <td>0 %</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
         {/* Results Table */}
         <div className="results-panel">
           <div className="results-header">
