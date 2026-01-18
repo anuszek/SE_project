@@ -2,14 +2,14 @@ import os
 import base64
 import pytest
 from app.models.employee import Employee
-from app.models.employee_face import FaceCredential  # <--- Dodany import
+from app.models.employee_face import FaceCredential
 from app.models.qr_code import QRCredential
 from app.utils.db import db
 
-# --- HELPERS ---
-
 def get_img_b64(path):
-    """Converts an image file to a base64 data URL string."""
+    """
+    Converts an image file to a base64 data URL string.
+    """
     if not os.path.exists(path):
         pytest.fail(f"Missing test file: {path}")
     with open(path, "rb") as f:
@@ -17,17 +17,19 @@ def get_img_b64(path):
 
 @pytest.fixture
 def clean_db(client):
-    """Clears the employee tables before each test"""
+    """
+    Clears the employee tables before each test
+    """
     with client.application.app_context():
         db.session.query(QRCredential).delete()
-        db.session.query(FaceCredential).delete() # <--- Czyścimy też twarze
+        db.session.query(FaceCredential).delete()
         db.session.query(Employee).delete()
         db.session.commit()
 
-# --- TESTS ---
-
 def test_register_employee_success(client, clean_db):
-    """Tests successful employee registration with face"""
+    """
+    Tests successful employee registration with face
+    """
     img_b64 = get_img_b64("faces_test/face.jpg")
     payload = {
         "first_name": "Michał",
@@ -41,21 +43,22 @@ def test_register_employee_success(client, clean_db):
     data = res.get_json()
     emp_id = data['employee_id']
 
-    # --- WERYFIKACJA BAZY DANYCH ---
+
     with client.application.app_context():
-        # Sprawdzamy czy zdjęcie fizycznie trafiło do bazy (BLOB)
+
         face_cred = FaceCredential.query.filter_by(employee_id=emp_id).first()
         
         assert face_cred is not None
         assert face_cred.face_encoding is not None
-        
-        # TO JEST KLUCZOWE SPRAWDZENIE:
+
         assert face_cred.face_image is not None
-        assert isinstance(face_cred.face_image, bytes) # Musi być bajtami
-        assert len(face_cred.face_image) > 0 # Musi mieć jakąś zawartość
+        assert isinstance(face_cred.face_image, bytes) 
+        assert len(face_cred.face_image) > 0 
 
 def test_register_employee_duplicate_email(client, clean_db):
-    """Tests blocking registration with the same email"""
+    """
+    Tests blocking registration with the same email
+    """
     img_b64 = get_img_b64("faces_test/face.jpg")
     payload = {
         "first_name": "Ewa", "last_name": "Nowak",
@@ -68,8 +71,10 @@ def test_register_employee_duplicate_email(client, clean_db):
     assert res.get_json()['error'] == "Email already exists"
 
 def test_get_all_employees(client, clean_db):
-    """Tests fetching the list of all employees"""
-    # Register someone
+    """
+    Tests fetching the list of all employees
+    """
+
     img_b64 = get_img_b64("faces_test/face.jpg")
     client.post('/api/employees/register', json={
         "first_name": "Adam", "last_name": "Z", "email": "a@z.pl", "image": img_b64
@@ -81,15 +86,17 @@ def test_get_all_employees(client, clean_db):
     assert len(data) == 1
 
 def test_modify_employee(client, clean_db):
-    """Tests modifying employee personal data via URL ID"""
-    # 1. Register an employee to get the ID
+    """
+    Tests modifying employee personal data via URL ID
+    """
+
     img_b64 = get_img_b64("faces_test/face.jpg")
     reg_res = client.post('/api/employees/register', json={
         "first_name": "Jan", "last_name": "K", "email": "jan@k.pl", "image": img_b64
     })
     emp_id = reg_res.get_json()['employee_id']
 
-    # 2. Prepare modification data (without ID inside)
+
     mod_payload = {
         "first_name": "Janusz", "last_name": "Kowalski", "email": "janusz@kowalski.pl"
     }
@@ -102,9 +109,10 @@ def test_modify_employee(client, clean_db):
         assert emp.first_name == "Janusz"
 
 def test_deactivate_and_refresh_qr(client, clean_db):
-    """Tests the cycle: switching QR state (switch) -> generating a completely new code"""
+    """
+    Tests the cycle: switching QR state (switch) -> generating a completely new code
+    """
     
-    # 1. REGISTRATION
     img_b64 = get_img_b64("faces_test/face.jpg")
     reg_res = client.post('/api/employees/register', json={
         "first_name": "Karol", "last_name": "W", "email": "k@w.pl", "image": img_b64
@@ -112,8 +120,6 @@ def test_deactivate_and_refresh_qr(client, clean_db):
     emp_id = reg_res.get_json()['employee_id']
     old_qr_data = reg_res.get_json()['qr_code']
 
-    # 2. DEACTIVATION (using switch_qr_state)
-    # URL contains ID, body contains is_active flag
     res_switch_off = client.post(
         f'/api/employees/{emp_id}/switch_qr_state', 
         json={"is_active": False}
@@ -125,19 +131,16 @@ def test_deactivate_and_refresh_qr(client, clean_db):
         emp = db.session.get(Employee, emp_id)
         assert emp.qr_code.is_active is False
 
-    # 3. GENERATING A NEW QR CODE
-    # This endpoint according to your code automatically sets is_active to True
     res_new_qr = client.post(f'/api/employees/{emp_id}/generate_new_qr_code')
     assert res_new_qr.status_code == 200
     
     data_new = res_new_qr.get_json()
-    assert data_new['qr_code'] != old_qr_data  # The code must be different
+    assert data_new['qr_code'] != old_qr_data  
     
     with client.application.app_context():
         emp = db.session.get(Employee, emp_id)
         assert emp.qr_code.is_active is True
 
-    # 4. MANUAL REACTIVATION (optional - checking the switch in the other direction)
     res_switch_on = client.post(
         f'/api/employees/{emp_id}/switch_qr_state', 
         json={"is_active": True}
@@ -146,24 +149,25 @@ def test_deactivate_and_refresh_qr(client, clean_db):
     assert res_switch_on.get_json()['is_active'] is True
     
 def test_delete_employee(client, clean_db):
-    """Tests deleting an employee"""
-    # 1. Registration
+    """
+    Tests deleting an employee
+    """
     img_b64 = get_img_b64("faces_test/face.jpg")
     reg_res = client.post('/api/employees/register', json={
         "first_name": "Usuwalny", "last_name": "P", "email": "u@p.pl", "image": img_b64
     })
     emp_id = reg_res.get_json()['employee_id']
 
-    # 2. Deletion
     res_del = client.delete(f'/api/employees/{emp_id}/delete')
     assert res_del.status_code == 200
-    
-    # 3. Check if the employee was removed
+
     res_get = client.get('/api/employees/all')
     assert len(res_get.get_json()) == 0
 
 def test_modify_non_existent_employee(client, clean_db):
-    """Tests modifying a non-existent employee (404)"""
+    """
+    Tests modifying a non-existent employee (404)
+    """
     res = client.put('/api/employees/modify_employee', json={
         "employee_id": 999, "first_name": "A", "last_name": "B", "email": "a@b.com"
     })
