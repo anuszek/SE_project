@@ -1,5 +1,5 @@
 # app/utils/db.py
 from flask_sqlalchemy import SQLAlchemy
 
-# Tworzymy obiekt i nazywamy go 'db'
+# We create the object and name it 'db'
 db = SQLAlchemy()
