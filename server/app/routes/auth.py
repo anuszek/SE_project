@@ -92,8 +92,18 @@ def verify_face_only():
         
         # Obliczamy encoding z przesłanego zdjęcia
         uploaded_encoding = FaceServices.get_encoding_from_image(image_stream)
-
         if uploaded_encoding is None:
+            try:
+                log = AccessLog(
+                    employee_id=employee_id,
+                    status="denied",
+                    verification_method="face"
+                )
+                db.session.add(log)
+                db.session.commit() # Commit zatwierdzi też zmiany w face_credential
+            except Exception as log_error:
+                print(f"[WARNING] Failed to log access: {log_error}")
+                db.session.rollback()
             return jsonify({
                 "status": "denied", 
                 "message": "No face detected in the uploaded image"
