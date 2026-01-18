@@ -30,9 +30,9 @@ def verify_qr_only():
         
         try:
             log = AccessLog(
-                employee_id = "unknown", 
+                employee_id = "Bad QR", 
                 status="denied",
-                verification_method="qr"
+                verification_method="QR"
             )
             db.session.add(log)
             db.session.commit()
@@ -48,17 +48,6 @@ def verify_qr_only():
     
     if not employee:
         return jsonify({"error": "Data consistency error: no employee found for this code"}), 500
-
-    try:
-        log = AccessLog(
-            employee_id=employee.id,
-            status="granted",
-            verification_method="qr"
-        )
-        db.session.add(log)
-        db.session.commit()
-    except Exception as log_error:
-        print(f"[WARNING] Failed to log access: {log_error}")
 
     return jsonify({
         "status": "valid",
@@ -99,8 +88,8 @@ def verify_face_only():
                 log = AccessLog(
                     employee_id=employee_id,
                     status="denied",
-                    verification_method="face",
-                    image = image_stream
+                    verification_method="QR + Face",
+                    image = uploaded_image_bytes
                 )
                 db.session.add(log)
                 db.session.commit()
@@ -146,7 +135,7 @@ def verify_face_only():
             log = AccessLog(
                 employee_id=employee_id,
                 status="granted",
-                verification_method="face"
+                verification_method="QR + Face"
             )
             db.session.add(log)
             db.session.commit()
@@ -164,8 +153,8 @@ def verify_face_only():
             log = AccessLog(
                 employee_id=employee_id,
                 status="denied",
-                verification_method="face",
-                image = image_input_base64
+                verification_method="QR + Face",
+                image = uploaded_image_bytes
             )
             db.session.add(log)
             db.session.commit()

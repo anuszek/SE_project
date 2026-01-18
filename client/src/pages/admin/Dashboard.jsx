@@ -65,8 +65,7 @@ const Dashboard = () => {
       id: log.id,
       employee: log.employee_name || `Employee ${log.employee_id}`,
       action: log.status === "granted" ? "Checked In" : "Denied",
-      method:
-        log.verification_method === "face" ? "Face Recognition" : "QR Code",
+      method: log.verification_method,
       time: new Date(log.timestamp).toLocaleString(), // Changed to toLocaleString for full date in modal
     }));
   };
@@ -215,7 +214,7 @@ const Dashboard = () => {
             <tbody>
               {recentActivity.map((activity) => (
                 <tr key={activity.id}>
-                  <td className="employee-name">{activity.employee}</td>
+                  <td className="employee-name">{activity.employee == "Unknown" ? "Bad QR" : activity.employee}</td>
                   <td>
                     <span
                       className={`status-badge ${
@@ -228,17 +227,8 @@ const Dashboard = () => {
                     </span>
                   </td>
                   <td className="method-cell">
-                    {activity.method === "Face Recognition" ? (
-                      <span className="method-tag method-face">
-                        <AccountCircleOutlined />
-                        Face
-                      </span>
-                    ) : (
-                      <span className="method-tag method-qr">
-                        <QrCodeOutlined />
-                        QR Code
-                      </span>
-                    )}
+                    {activity.method}
+                    
                   </td>
                   <td className="time-cell">{activity.time}</td>
                 </tr>
@@ -281,7 +271,7 @@ const Dashboard = () => {
                       {allLogs.map((activity) => (
                         <tr key={activity.id}>
                           <td>#{activity.id}</td>
-                          <td className="employee-name">{activity.employee}</td>
+                          <td className="employee-name">{activity.employee == "Unknown" ? "Bad QR" : activity.employee}</td>
                           <td>
                             <span
                               className={`status-badge ${
@@ -294,17 +284,7 @@ const Dashboard = () => {
                             </span>
                           </td>
                           <td className="method-cell">
-                            {activity.method === "Face Recognition" ? (
-                              <span className="method-tag method-face">
-                                <AccountCircleOutlined />
-                                Face
-                              </span>
-                            ) : (
-                              <span className="method-tag method-qr">
-                                <QrCodeOutlined />
-                                QR Code
-                              </span>
-                            )}
+                            {activity.method}
                           </td>
                           <td className="time-cell">{activity.time}</td>
                         </tr>

@@ -167,12 +167,14 @@ const Reports = () => {
                 <th>Timestamp</th>
                 <th>Employee</th>
                 <th>Status</th>
+                <th>Method</th>
+                <th>Image</th>
               </tr>
             </thead>
             <tbody>
               {reportData.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="empty-cell">
+                  <td colSpan="5" className="empty-cell">
                     No data found
                   </td>
                 </tr>
@@ -189,6 +191,8 @@ const Reports = () => {
                         {row.status}
                       </span>
                     </td>
+                    <td>{row.verification_method}</td>
+                    <td>{row.image ? <img src={row.image} alt="Verification" style={{ maxWidth: "100px", maxHeight: "100px" }} /> : "N/A"}</td>
                   </tr>
                 ))
               )}
