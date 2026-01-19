@@ -9,8 +9,6 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from app.utils.helpers import refresh_expired_qr_codes
 from app.utils.db import db
 
-
-# GLOBAL migrate object
 migrate = Migrate()
 
 def create_app():
@@ -32,39 +30,29 @@ def create_app():
         }
     })
 
-    # Ensure instance/ folder exists
     os.makedirs(app.instance_path, exist_ok=True)
 
-    # Absolute path to SQLite DB inside instance/
     db_path = os.path.join(app.instance_path, "access_system.db")
 
-    # Database config
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SECRET_KEY"] = "your-secret-key"
 
-    # Initialize DB + migrations
     db.init_app(app)
     migrate.init_app(app, db)
 
     # ----------------------------------------
-    # KONTEKST APLIKACJI I TWORZENIE BAZY
+    # DATABASE TABLE CREATION
     # ----------------------------------------
     with app.app_context():
-        # 1. IMPORT MODELI
-        # Ważne: Musimy zaimportować klasy ze wszystkich plików modeli,
-        # żeby SQLAlchemy wiedziało o ich istnieniu przed create_all().
         
         from app.models.employee import Employee
         from app.models.employee_face import FaceCredential
-        from app.models.qr_code import QRCredential  # Pamiętaj, klasa nazywa się QRCredential
+        from app.models.qr_code import QRCredential  
         from app.models.access_log import AccessLog
         
-        # 2. TWORZENIE TABEL
-        # SQLAlchemy przeskanuje zaimportowane modele i utworzy brakujące tabele
         db.create_all()
 
-        # Logowanie dla pewności
         print("-" * 50)
         print(f"Connected to DB at: {db_path}")
         print("Detected tables:", db.metadata.tables.keys())
@@ -73,7 +61,6 @@ def create_app():
     # ----------------------------------------
     # REGISTER BLUEPRINTS
     # ----------------------------------------
-    # Tu później dodasz rejestrację tras (routes), np.:
     from app.routes.employees import employees_bp
     from app.routes.auth import auth_bp
     from app.routes.admin import admin_bp
@@ -87,10 +74,9 @@ def create_app():
     # ----------------------------------------
     scheduler = BackgroundScheduler()
 
-    # Uruchamiaj scheduler tylko gdy NIE jesteśmy w trybie TESTING
     if not app.config.get("TESTING", False):
         def _cleanup_job():
-            """Job: czyszczenie wygasłych i nieaktywnych QR"""
+            """Job: cleaning expired and inactive QR codes every 24 hours."""
             with app.app_context():
                 try:
                     refreshed = refresh_expired_qr_codes()
@@ -98,7 +84,6 @@ def create_app():
                 except Exception as e:
                     print(f"[QR Cleanup Job] Error: {str(e)}")
 
-        # Dodaj job: uruchamiaj co 24 godziny
         scheduler.add_job(
             _cleanup_job,
             'interval',
@@ -106,12 +91,27 @@ def create_app():
             id='cleanup_qr_job',
             replace_existing=True
         )
+        
+        def _clear_logs_job():
+            """Job: clearing expired access logs every 24 hours."""
+            with app.app_context():
+                try:
+                    deleted = clear_expired_logs()
+                    print(f"[Log Cleanup Job] Deleted: {deleted} old logs")
+                except Exception as e:
+                    print(f"[Log Cleanup Job] Error: {str(e)}")
 
-        # Uruchom scheduler
+        scheduler.add_job(
+            _clear_logs_job,
+            'interval',
+            hours=24,
+            id='clear_logs_job',
+            replace_existing=True
+        )
+
         scheduler.start()
         print("[Scheduler] Started QR cleanup job (every 24h)")
 
-        # Zamknij scheduler gdy aplikacja się wyłącza
         atexit.register(lambda: scheduler.shutdown(wait=False))
 
     return app

@@ -1,4 +1,3 @@
-# Przechowuj info pracownika + ścieżkę do zdjęcia referencyjnego
 from datetime import datetime
 from app.utils.db import db  
 

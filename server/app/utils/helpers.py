@@ -1,19 +1,19 @@
 from sqlalchemy import func
 from sqlalchemy.orm import aliased
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.utils.db import db
 from app.models.employee import Employee
 from app.models.qr_code import QRCredential
 from app.services.qr_service import QRService
 
 def get_next_available_id():
+    """
+    Finds the next available Employee ID, filling gaps if any.
+    """
     min_id = db.session.query(func.min(Employee.id)).scalar()
 
-    # jeśli pusta
     if min_id is None or min_id >1:
         return 1
-    
-    # dziura-> alisay
 
     e1 = db.aliased(Employee)
     e2 = db.aliased(Employee)
@@ -24,24 +24,18 @@ def get_next_available_id():
     
     if gap_id:
         return gap_id
-    else: # max id
+    else: 
         max_id = db.session.query(func.max(Employee.id)).scalar()
         return max_id + 1
 
-def refresh_expired_qr_codes(valid_weeks: int = 4):
+def refresh_expired_qr_codes(valid_minutes: int = 3600):
     """
-    Odświerza tylko wygasłe wpisy QR dla wszystkich pracowników.
-    Nadpisuje stary kod nowym.
-    
-    Args:
-        valid_weeks: Liczba tygodni ważności nowego QR
-    
-    Zwraca listę wygenerowanych pozycji: [{"employee_id","new_qr","expires_at"}, ...]
+    Refreshes only expired QR entries for all employees.
+    Overwrites the old code with a new one.
     """
     now = datetime.utcnow()
     results = []
     try:
-        # Znajdź pracowników z wygasłymi kodami
         expired = QRCredential.query.filter(
             QRCredential.expires_at != None,
             QRCredential.expires_at < now,
@@ -49,8 +43,7 @@ def refresh_expired_qr_codes(valid_weeks: int = 4):
         ).all()
 
         for qr in expired:
-            # Nadpisz stary kod nowym
-            new_code, new_exp = QRService.generate_credential(valid_weeks)
+            new_code, new_exp = QRService.generate_credential(valid_minutes)
             qr.qr_code_data = new_code
             qr.expires_at = new_exp
             db.session.add(qr)
@@ -66,3 +59,16 @@ def refresh_expired_qr_codes(valid_weeks: int = 4):
         raise
 
     return results
+
+def clear_expired_logs(retention_months: int = 6):
+    """
+    Deletes access logs older than retention_months.
+    """
+    cutoff_date = datetime.utcnow() - timedelta(days=retention_months*30)
+    try:
+        deleted = AccessLog.query.filter(AccessLog.timestamp < cutoff_date).delete()
+        db.session.commit()
+        return deleted
+    except Exception:
+        db.session.rollback()
+        raise

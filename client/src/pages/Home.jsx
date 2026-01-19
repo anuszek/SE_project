@@ -21,6 +21,7 @@ const Home = () => {
   const [verificationResult, setVerificationResult] = useState(null);
   const [accessGranted, setAccessGranted] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     if (errorMessage) {
@@ -30,6 +31,15 @@ const Home = () => {
       return () => clearTimeout(timer);
     }
   }, [errorMessage]);
+
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage("");
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   const handleQrScan = async (data) => {
     if (isPaused) return;
@@ -64,6 +74,7 @@ const Home = () => {
       const result = await verifyFace(empId, face);
       // You can use this result for logging or minor UI feedback
       setVerificationResult({ success: true, data: result });
+      setSuccessMessage("Verification successful! Access granted.");
       console.log("Background verification success:", result);
       setTimeout(() => reset(), 2000);
     } catch (error) {
@@ -71,6 +82,7 @@ const Home = () => {
         success: false,
         error: error.message || "Verification failed",
       });
+      setErrorMessage(error.message || "Verification failed");
       console.error("Background verification error:", error);
       setTimeout(() => reset(), 3000);
     }
@@ -82,6 +94,7 @@ const Home = () => {
     setFaceImage(null);
     setVerificationResult(null);
     setAccessGranted(false);
+    setIsPaused(false);
   };
 
   const getStepNumber = () => {
@@ -289,6 +302,19 @@ const Home = () => {
             className="error-close-btn"
             onClick={() => setErrorMessage("")}
             aria-label="Close error message"
+          >
+            <Close fontSize="small" />
+          </button>
+        </div>
+      )}
+      {successMessage && (
+        <div className="message-container success-message">
+          {successMessage}
+          <button
+            type="button"
+            className="success-close-btn"
+            onClick={() => setSuccessMessage("")}
+            aria-label="Close success message"
           >
             <Close fontSize="small" />
           </button>

@@ -8,15 +8,21 @@ from app.utils.db import db
 class QRService:
 
     @staticmethod
-    def generate_credential(valid_weeks: int = 4):
+    def generate_credential(valid_minutes: int = 3600):
+        """
+        Generates a unique QR code data and its expiration date.
+        """
 
         qr_code_data = str(uuid.uuid4())
 
-        expiration = datetime.utcnow() + timedelta(weeks=valid_weeks)
+        expiration = datetime.utcnow() + timedelta(minutes=valid_minutes)
         return qr_code_data, expiration
     
     @staticmethod
     def validate_qr_code(qr_code_data: str):
+        """
+        Validates the provided QR code data.
+        """
 
         if not qr_code_data:
             return False

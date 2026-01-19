@@ -1,7 +1,6 @@
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 from sqlalchemy.exc import IntegrityError
-import re
 from app.utils.db import db
 from app.models.employee import Employee
 from app.models.employee_face import FaceCredential
@@ -10,7 +9,6 @@ from app.services.face_service import FaceServices
 from app.services.qr_service import QRService
 from app.utils.helpers import  get_next_available_id
 
-# Stałe walidacyjne
 MIN_NAME_LEN = 3
 MAX_EMAIL_LEN = 300
 
@@ -19,11 +17,10 @@ employees_bp = Blueprint('employees', __name__)
 @employees_bp.route('/register', methods=['POST'])
 def register_employee():
     """
-    Rejestracja pracownika (BEZ QR).
-    Tylko Dane Osobowe + Twarz.
+    Registers a new employee with biometric data.
     """
     if not request.is_json:
-        return jsonify({"error": "Wymagany format JSON"}), 400
+        return jsonify({"error": "JSON format required"}), 400
     
     data = request.get_json()
     first_name = data.get('first_name')
@@ -34,21 +31,6 @@ def register_employee():
     if not first_name or not last_name or not email or not image_base64:
         return jsonify({'error': 'Missing required fields'}), 400
     
-    # Walidacja Regex
-    # email_pattern = r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
-    # name_pattern = r"^[A-Za-z0-9_.'-]+$"
-
-    # if (
-    #     not re.match(email_pattern, email) or
-    #     not re.match(name_pattern, first_name) or
-    #     not re.match(name_pattern, last_name) or
-    #     len(email) > MAX_EMAIL_LEN or
-    #     len(first_name) < MIN_NAME_LEN or
-    #     len(last_name) < MIN_NAME_LEN
-    # ):
-    #     return jsonify({"message": "Invalid data format"}), 400
-
-    # Przetwarzanie zdjęcia
     try:
         image_stream = FaceServices.handle_base64_image(image_base64)
         if image_stream is None:
@@ -60,10 +42,11 @@ def register_employee():
         
         face_bytes = FaceServices.encoding_to_bytes(face_encoding_np)
 
-    except Exception as e:
-        return jsonify({"error": f"Image error: {str(e)}"}), 500
+        image_blob = FaceServices.get_image_bytes(image_stream)
 
-    # Zapis do bazy
+    except Exception as e:
+        return jsonify({"error": f"Image processing error: {str(e)}"}), 500
+
     try:
         new_id = get_next_available_id()
         qr_code_data, expires_at = QRService.generate_credential()
@@ -79,8 +62,8 @@ def register_employee():
 
         new_face = FaceCredential(
             employee_id=new_employee.id, 
-            face_encoding=face_bytes,
-            face_image_path="memory"
+            face_encoding=face_bytes,  
+            face_image=image_blob      
         )
         db.session.add(new_face)
         db.session.flush()
@@ -92,6 +75,7 @@ def register_employee():
             is_active=True
         )
         db.session.add(new_qr)
+        
         db.session.commit()
 
         return jsonify({
@@ -109,7 +93,9 @@ def register_employee():
 
 @employees_bp.route('/all', methods=['GET'])
 def get_all_employees():
-    """Pobiera listę wszystkich pracowników"""
+    """
+    Retrieves a list of all employees with their QR code info.
+    """
     employees = Employee.query.all()
     return jsonify([{
         "id": emp.id,
@@ -126,7 +112,9 @@ def get_all_employees():
 
 @employees_bp.route('/<int:employee_id>/delete', methods=['DELETE'])
 def delete_employee(employee_id):
-    """Usuwa pracownika i jego dane biometryczne"""
+    """
+    Deletes an employee and their biometric data.
+    """
     employee = Employee.query.get(employee_id)
     if not employee:
         return jsonify({"error": "Employee not found"}), 404
@@ -137,7 +125,9 @@ def delete_employee(employee_id):
 
 @employees_bp.route('/<int:employee_id>/generate_new_qr_code', methods=['POST'])
 def generate_new_qr_code(employee_id):
-    """Generuje całkowicie nowy QR dla pracownika"""
+    """
+    Generates a completely new QR code for the employee, replacing the old one.
+    """
 
     employee = Employee.query.get(employee_id)
     if not employee:
@@ -164,7 +154,9 @@ def generate_new_qr_code(employee_id):
     
 @employees_bp.route('/<int:employee_id>/switch_qr_state', methods=['POST'])
 def switch_qr_state(employee_id):
-    """Zmienia stan aktywności kodu QR dla danego pracownika"""
+    """
+    Activates or deactivates the employee's QR code.
+    """
     
     data = request.get_json()
     is_active = data.get('is_active')
@@ -189,9 +181,11 @@ def switch_qr_state(employee_id):
 
 @employees_bp.route('/<int:employee_id>/modify_employee', methods=['PUT'])
 def modify_employee(employee_id):
-    """Modyfikuje dane pracownika"""
+    """ 
+    Modifies employee data.
+    """
     if not request.is_json:
-        return jsonify({"error": "Wymagany format JSON"}), 400
+        return jsonify({"error": "JSON format required"}), 400
     
     data = request.get_json()
     first_name = data.get('first_name')
@@ -216,4 +210,4 @@ def modify_employee(employee_id):
         return jsonify({"error": "Email already exists"}), 409
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500    
+        return jsonify({"error": str(e)}), 500
